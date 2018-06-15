@@ -33,7 +33,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation project(path: ':html2text')
     implementation project(path: ':parser')
-    implementation project(path: ':text')
+    implementation project(path: ':document')
 }
 repositories {
     mavenCentral()

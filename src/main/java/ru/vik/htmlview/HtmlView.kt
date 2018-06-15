@@ -6,9 +6,8 @@ import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
 
-import ru.vik.html2text.Html2Text
 import ru.vik.html2text.SimpleHtml2Text
-import ru.vik.text.*
+import ru.vik.document.*
 
 class HtmlView(context: Context,
                attrs: AttributeSet?,
@@ -18,7 +17,7 @@ class HtmlView(context: Context,
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
 
-    var html2Text: Html2Text = SimpleHtml2Text()
+    var html2Text: Document = SimpleHtml2Text()
     var fontList: FontList? = null
     var ps: ParagraphStyle = ParagraphStyle.default()
     var cs: CharacterStyle = CharacterStyle.default()
@@ -164,25 +163,32 @@ class HtmlView(context: Context,
                     (bs.margin.right + bs.borderRightWidth + bs.padding.right) * this.density
         var bottom = top
 
-        // Measuring
         val text = paragraph.text.toString()
 
         if (text.isNotEmpty()) {
-            val font: Font = getFont(cs.font)
+            var draw = false // Measuring
 
-            this.textPaint.typeface = font.typeface
-            this.textPaint.textSize = getFontSize(cs.size, font.scale)
-            this.textPaint.textScaleX = 0.85f
+            while (true) {
+                val font: Font = getFont(cs.font)
 
-            val fontMetrics = font.correctFontMetrics(this.textPaint.fontMetrics)
-            val baseline = bottom - fontMetrics.ascent
+                this.textPaint.typeface = font.typeface
+                this.textPaint.textSize = getFontSize(cs.size, font.scale)
+                this.textPaint.textScaleX = 0.85f
 
-            bottom = baseline + fontMetrics.descent + fontMetrics.leading
+                val fontMetrics = font.correctFontMetrics(this.textPaint.fontMetrics)
+                val baseline = bottom - fontMetrics.ascent
 
-            if (canvas != null) {
+                bottom = baseline + fontMetrics.descent + fontMetrics.leading
+
+                if (draw && canvas != null) {
+                    drawText(canvas, text, left, baseline, this.textPaint, true)
+                }
+
+                if (draw || canvas == null) break
+
+                draw = true
+
                 drawBorder(canvas, bs, top, left, bottom, right)
-
-                drawText(canvas, text, left, baseline, this.textPaint, true)
             }
         }
 
