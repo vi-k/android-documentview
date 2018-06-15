@@ -1,4 +1,4 @@
-package ru.vik.htmlview
+package ru.vik.documentview
 
 import android.content.Context
 import android.graphics.*

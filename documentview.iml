@@ -151,8 +151,8 @@
     <orderEntry type="library" name="Gradle: android.arch.core:common:1.1.0@jar" level="project" />
     <orderEntry type="library" scope="TEST" name="Gradle: net.sf.kxml:kxml2:2.3.0@jar" level="project" />
     <orderEntry type="library" name="Gradle: android.arch.lifecycle:runtime-1.1.0" level="project" />
-    <orderEntry type="module" module-name="htmldoc" />
     <orderEntry type="module" module-name="document" />
+    <orderEntry type="module" module-name="htmldocument" />
     <orderEntry type="module" module-name="parser" />
   </component>
 </module>

@@ -1,4 +1,4 @@
-package ru.vik.htmlview
+package ru.vik.documentview
 
 import android.graphics.Paint
 import android.graphics.Typeface
