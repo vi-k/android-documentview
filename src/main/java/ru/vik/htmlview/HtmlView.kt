@@ -6,7 +6,7 @@ import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
 
-import ru.vik.html2text.SimpleHtml2Text
+import ru.vik.html2text.SimpleHtmlDoc
 import ru.vik.document.*
 
 class HtmlView(context: Context,
@@ -17,7 +17,7 @@ class HtmlView(context: Context,
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
 
-    var html2Text: Document = SimpleHtml2Text()
+    var html2Text: Document = SimpleHtmlDoc()
     var fontList: FontList? = null
     var ps: ParagraphStyle = ParagraphStyle.default()
     var cs: CharacterStyle = CharacterStyle.default()
