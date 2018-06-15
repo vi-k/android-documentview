@@ -6,18 +6,17 @@ import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
 
-import ru.vik.html2text.SimpleHtmlDoc
 import ru.vik.document.*
 
-class HtmlView(context: Context,
-               attrs: AttributeSet?,
-               defStyleAttr: Int)
+class DocumentView(context: Context,
+                   attrs: AttributeSet?,
+                   defStyleAttr: Int)
     : View(context, attrs, defStyleAttr) {
 
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
 
-    var html2Text: Document = SimpleHtmlDoc()
+    var document: Document = Document()
     var fontList: FontList? = null
     var ps: ParagraphStyle = ParagraphStyle.default()
     var cs: CharacterStyle = CharacterStyle.default()
@@ -35,13 +34,6 @@ class HtmlView(context: Context,
     private val paint = Paint()
     private val path = Path()
 //    private var words = mutableListOf<Word>()
-
-    var text: String = ""
-        set(value) {
-            field = value
-
-            this.html2Text.setHtml(value)
-        }
 
 //    var text: String = ""
 //        set(value) {
@@ -81,7 +73,7 @@ class HtmlView(context: Context,
 
         canvas.save()
 
-        this.html2Text.root?.let {
+        this.document.root?.let {
             drawSection(canvas,
                     it, this.ps, this.cs,
                     this.paddingTop.toFloat(),
