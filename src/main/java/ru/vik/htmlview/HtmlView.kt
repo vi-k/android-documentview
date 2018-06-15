@@ -210,8 +210,8 @@ class HtmlView(context: Context,
         val outRight = inRight + bs.borderRightWidth * this.density
 
         // Фон
-        bs.color?.also {
-            this.paint.color = it
+        if (bs.color != 0) {
+            this.paint.color = bs.color
             canvas.drawRect(outLeft, outTop, outRight, outBottom, this.paint)
         }
 
