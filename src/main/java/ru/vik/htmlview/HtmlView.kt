@@ -23,9 +23,8 @@ class HtmlView(context: Context,
     var ps: ParagraphStyle = ParagraphStyle.default()
     var cs: CharacterStyle = CharacterStyle.default()
 
-    private val defaultFont = Font(Typeface.SERIF)
-    val density = this.context.resources.displayMetrics.density
-    val scaledDensity = this.context.resources.displayMetrics.scaledDensity
+    private val density = this.context.resources.displayMetrics.density
+    private val scaledDensity = this.context.resources.displayMetrics.scaledDensity
 
 //    class Word(val spaces: Int,
 //               val start: Int,
@@ -35,6 +34,7 @@ class HtmlView(context: Context,
 
     private val textPaint = TextPaint()
     private val paint = Paint()
+    private val path = Path()
 //    private var words = mutableListOf<Word>()
 
     var text: String = ""
@@ -43,8 +43,6 @@ class HtmlView(context: Context,
 
             this.html2Text.setHtml(value)
         }
-
-    val drawRect = RectF()
 
 //    var text: String = ""
 //        set(value) {
@@ -84,143 +82,108 @@ class HtmlView(context: Context,
 
         canvas.save()
 
-        this.drawRect.left = this.paddingLeft.toFloat()
-        this.drawRect.right = (this.width - this.paddingRight).toFloat()
-        this.drawRect.top = this.paddingTop.toFloat()
-        this.drawRect.bottom = (this.height - this.paddingBottom).toFloat()
-
         this.html2Text.root?.let {
-            drawSection(it, this.ps, this.cs, this.drawRect, canvas, this.textPaint)
+            drawSection(canvas,
+                    it, this.ps, this.cs,
+                    this.paddingTop.toFloat(),
+                    this.paddingLeft.toFloat(),
+                    (this.width - this.paddingRight).toFloat())
         }
 
         canvas.restore()
     }
 
-    private fun drawSection(section: Section,
+    private fun drawSection(canvas: Canvas?,
+                            section: Section,
                             parentPs: ParagraphStyle,
                             parentCs: CharacterStyle,
-                            clipRect: RectF,
-                            canvas: Canvas,
-                            textPaint: TextPaint): Float {
+                            clipTop: Float,
+                            clipLeft: Float,
+                            clipRight: Float): Float {
+
         val ps = parentPs.attach(section.ps)
         val cs = parentCs.attach(section.cs)
         val bs = section.bs
 
-        val drawRect = RectF(
-                clipRect.left + (bs.margin.left + bs.borderLeftWidth + bs.padding.left) * this.density,
-                clipRect.top + (bs.margin.top + bs.borderTopWidth + bs.padding.top) * this.density,
-                clipRect.right - (bs.margin.right + bs.borderRightWidth + bs.padding.right) * this.density,
-                clipRect.bottom - (bs.margin.bottom + bs.borderBottomWidth + bs.padding.bottom) * this.density)
+        val top = clipTop +
+                  (bs.margin.top + bs.borderTopWidth + bs.padding.top) * this.density
+        val left = clipLeft +
+                   (bs.margin.left + bs.borderLeftWidth + bs.padding.left) * this.density
+        val right = clipRight -
+                    (bs.margin.right + bs.borderRightWidth + bs.padding.right) * this.density
+        var bottom = top
 
+        // Measuring
         for (item in section.paragraphs) {
             when (item) {
                 is Section   ->
-                    drawRect.top = drawSection(item, ps, cs, drawRect, canvas, textPaint)
+                    bottom = drawSection(null, item, ps, cs, bottom, left, right)
 
                 is Paragraph ->
-                    drawRect.top = drawParagraph(item, ps, cs, drawRect, canvas, textPaint)
+                    bottom = drawParagraph(null, item, ps, cs, bottom, left, right)
             }
         }
 
-        val bottom = drawRect.top
+        // Drawing
+        if (canvas != null) {
+            drawBorder(canvas, bs, top, left, bottom, right)
 
-        val outRect = RectF(
-                clipRect.left + bs.margin.left * this.density,
-                clipRect.top + bs.margin.top * this.density,
-                clipRect.right - bs.margin.right * this.density,
-                bottom + (bs.padding.top + bs.borderBottomWidth) * this.density)
-        val inRect = RectF(
-                outRect.left + bs.borderLeftWidth * this.density,
-                outRect.top + bs.borderTopWidth * this.density,
-                outRect.right - bs.borderRightWidth * this.density,
-                bottom + bs.padding.top * this.density)
-        val path = Path()
+            bottom = top
 
-        // Фон
-        ps.bgColor?.also {
-            paint.color = it
-            canvas.drawRect(outRect, paint)
-        }
+            for (item in section.paragraphs) {
+                when (item) {
+                    is Section   ->
+                        bottom = drawSection(canvas, item, ps, cs, bottom, left, right)
 
-        // Рамка
-        bs.border.top?.also {
-            this.paint.color = it.color
-            path.reset()
-            path.moveTo(outRect.left, outRect.top)
-            path.lineTo(outRect.right, outRect.top)
-            path.lineTo(outRect.right, inRect.top)
-            path.lineTo(outRect.left, inRect.top)
-            path.close()
-            canvas.drawPath(path, paint)
-        }
-
-        bs.border.bottom?.also {
-            this.paint.color = it.color
-            path.reset()
-            path.moveTo(outRect.left, inRect.bottom)
-            path.lineTo(outRect.right, inRect.bottom)
-            path.lineTo(outRect.right, outRect.bottom)
-            path.lineTo(outRect.left, outRect.bottom)
-            path.close()
-            canvas.drawPath(path, paint)
-        }
-
-        bs.border.left?.also {
-            this.paint.color = it.color
-            path.reset()
-            path.moveTo(outRect.left, outRect.top)
-            path.lineTo(outRect.left, outRect.bottom)
-            path.lineTo(inRect.left, if (bs.borderBottomWidth == 0f) outRect.bottom else inRect.bottom)
-            path.lineTo(inRect.left, if (bs.borderTopWidth == 0f) outRect.top else inRect.top)
-            path.close()
-            canvas.drawPath(path, paint)
-        }
-
-        bs.border.right?.also {
-            this.paint.color = it.color
-            path.reset()
-            path.moveTo(outRect.right, outRect.top)
-            path.lineTo(outRect.right, outRect.bottom)
-            path.lineTo(inRect.right, if (bs.borderBottomWidth == 0f) outRect.bottom else inRect.bottom)
-            path.lineTo(inRect.right, if (bs.borderTopWidth == 0f) outRect.top else inRect.top)
-            path.close()
-            canvas.drawPath(path, paint)
+                    is Paragraph ->
+                        bottom = drawParagraph(canvas, item, ps, cs, bottom, left, right)
+                }
+            }
         }
 
         return bottom + (bs.padding.bottom + bs.borderBottomWidth + bs.margin.bottom) * this.density
     }
 
-    private fun drawParagraph(paragraph: Paragraph,
+    private fun drawParagraph(canvas: Canvas?,
+                              paragraph: Paragraph,
                               parentPs: ParagraphStyle,
                               parentCs: CharacterStyle,
-                              clipRect: RectF,
-                              canvas: Canvas,
-                              textPaint: TextPaint): Float {
+                              clipTop: Float,
+                              clipLeft: Float,
+                              clipRight: Float): Float {
+
         val ps = parentPs.attach(paragraph.ps)
         val cs = parentCs.attach(paragraph.cs)
         val bs = paragraph.bs
 
-        val drawRect = RectF(
-                clipRect.left + (bs.margin.left + bs.borderLeftWidth + bs.padding.left) * this.density,
-                clipRect.top + (bs.margin.top + bs.borderTopWidth + bs.padding.top) * this.density,
-                clipRect.right - (bs.margin.right + bs.borderRightWidth + bs.padding.right) * this.density,
-                clipRect.bottom - (bs.margin.bottom + bs.borderBottomWidth + bs.padding.bottom) * this.density)
+        val top = clipTop +
+                  (bs.margin.top + bs.borderTopWidth + bs.padding.top) * this.density
+        val left = clipLeft +
+                   (bs.margin.left + bs.borderLeftWidth + bs.padding.left) * this.density
+        val right = clipRight -
+                    (bs.margin.right + bs.borderRightWidth + bs.padding.right) * this.density
+        var bottom = top
 
-        var bottom: Float = drawRect.top
+        // Measuring
         val text = paragraph.text.toString()
 
         if (text.isNotEmpty()) {
             val font: Font = getFont(cs.font)
 
-            textPaint.typeface = font.typeface
-            textPaint.textSize = getFontSize(cs.size, font.scale)
-            textPaint.textScaleX = 0.85f
+            this.textPaint.typeface = font.typeface
+            this.textPaint.textSize = getFontSize(cs.size, font.scale)
+            this.textPaint.textScaleX = 0.85f
 
-            val fontMetrics = font.correctFontMetrics(textPaint.fontMetrics)
+            val fontMetrics = font.correctFontMetrics(this.textPaint.fontMetrics)
             val baseline = bottom - fontMetrics.ascent
 
-            drawText(canvas, text, drawRect.left, baseline, textPaint, true)
             bottom = baseline + fontMetrics.descent + fontMetrics.leading
+
+            if (canvas != null) {
+                drawBorder(canvas, bs, top, left, bottom, right)
+
+                drawText(canvas, text, left, baseline, this.textPaint, true)
+            }
         }
 
 //        for (span in paragraph.spans) {
@@ -230,8 +193,76 @@ class HtmlView(context: Context,
         return bottom + (bs.padding.bottom + bs.borderBottomWidth + bs.margin.bottom) * this.density
     }
 
+    private fun drawBorder(canvas: Canvas,
+                           bs: BlockStyle,
+                           top: Float,
+                           left: Float,
+                           bottom: Float,
+                           right: Float) {
+
+        val inTop = top - bs.padding.top * this.density
+        val inLeft = left - bs.padding.left * this.density
+        val inBottom = bottom + bs.padding.bottom * this.density
+        val inRight = right + bs.padding.right * this.density
+        val outTop = inTop - bs.borderTopWidth * this.density
+        val outLeft = inLeft - bs.borderLeftWidth * this.density
+        val outBottom = inBottom + bs.borderBottomWidth * this.density
+        val outRight = inRight + bs.borderRightWidth * this.density
+
+        // Фон
+        bs.color?.also {
+            this.paint.color = it
+            canvas.drawRect(outLeft, outTop, outRight, outBottom, this.paint)
+        }
+
+        // Рамка
+        bs.border.top?.also {
+            this.paint.color = it.color
+            this.path.reset()
+            this.path.moveTo(outLeft, outTop)
+            this.path.lineTo(outRight, outTop)
+            this.path.lineTo(outRight, inTop)
+            this.path.lineTo(outLeft, inTop)
+            this.path.close()
+            canvas.drawPath(this.path, this.paint)
+        }
+
+        bs.border.bottom?.also {
+            this.paint.color = it.color
+            path.reset()
+            path.moveTo(outLeft, inBottom)
+            path.lineTo(outRight, inBottom)
+            path.lineTo(outRight, outBottom)
+            path.lineTo(outLeft, outBottom)
+            path.close()
+            canvas.drawPath(path, paint)
+        }
+
+        bs.border.left?.also {
+            this.paint.color = it.color
+            path.reset()
+            path.moveTo(outLeft, outTop)
+            path.lineTo(outLeft, outBottom)
+            path.lineTo(inLeft, if (bs.borderBottomWidth == 0f) outBottom else inBottom)
+            path.lineTo(inLeft, if (bs.borderTopWidth == 0f) outTop else inTop)
+            path.close()
+            canvas.drawPath(path, paint)
+        }
+
+        bs.border.right?.also {
+            this.paint.color = it.color
+            path.reset()
+            path.moveTo(outRight, outTop)
+            path.lineTo(outRight, outBottom)
+            path.lineTo(inRight, if (bs.borderBottomWidth == 0f) outBottom else inBottom)
+            path.lineTo(inRight, if (bs.borderTopWidth == 0f) outTop else inTop)
+            path.close()
+            canvas.drawPath(path, paint)
+        }
+    }
+
     private fun getFont(name: String?): Font {
-        return this.fontList?.get(name ?: "main") ?: this.defaultFont
+        return name?.let { this.fontList?.get(name) } ?: Font(Typeface.DEFAULT)
     }
 
     private fun getFontSize(size: Float?, scale: Float): Float {
