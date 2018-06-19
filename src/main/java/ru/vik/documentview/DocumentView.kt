@@ -7,6 +7,7 @@ import android.util.AttributeSet
 import android.view.View
 
 import ru.vik.document.*
+import ru.vik.parser.StringParser
 
 class DocumentView(context: Context,
                    attrs: AttributeSet?,
@@ -24,16 +25,20 @@ class DocumentView(context: Context,
     private val density = this.context.resources.displayMetrics.density
     private val scaledDensity = this.context.resources.displayMetrics.scaledDensity
 
-//    class Word(val spaces: Int,
-//               val start: Int,
-//               val end: Int,
-//               var spacesWidth: Float = 0.0f,
-//               var textWidth: Float = 0.0f)
-
     private val textPaint = TextPaint()
     private val paint = Paint()
     private val path = Path()
-//    private var words = mutableListOf<Word>()
+
+    class Word(var isFirst: Boolean,
+               val spaces: Int,
+               val start: Int,
+               val end: Int,
+               val cs: CharacterStyle,
+               var spacesWidth: Float = 0f,
+               val textWidth: Float = 0f,
+               var y: Float = 0f)
+
+    private var words = mutableListOf<Word>()
 
 //    var text: String = ""
 //        set(value) {
@@ -92,8 +97,8 @@ class DocumentView(context: Context,
                             clipLeft: Float,
                             clipRight: Float): Float {
 
-        val ps = parentPs.attach(section.ps)
-        val cs = parentCs.attach(section.cs)
+        val ps = parentPs.clone().attach(section.ps)
+        val cs = parentCs.clone().attach(section.cs)
         val bs = section.bs
 
         val top = clipTop +
@@ -143,52 +148,222 @@ class DocumentView(context: Context,
                               clipLeft: Float,
                               clipRight: Float): Float {
 
-        val ps = parentPs.attach(paragraph.ps)
-        val cs = parentCs.attach(paragraph.cs)
+        val ps = parentPs.clone().attach(paragraph.ps)
+        val cs = parentCs.clone().attach(paragraph.cs)
         val bs = paragraph.bs
 
-        val top = clipTop +
-                  (bs.margin.top + bs.borderTopWidth + bs.padding.top) * this.density
-        val left = clipLeft +
-                   (bs.margin.left + bs.borderLeftWidth + bs.padding.left) * this.density
-        val right = clipRight -
-                    (bs.margin.right + bs.borderRightWidth + bs.padding.right) * this.density
+        val top = clipTop + (bs.margin.top +
+                             bs.borderTopWidth +
+                             bs.padding.top) * this.density
+        val left = clipLeft + (bs.margin.left +
+                               bs.borderLeftWidth +
+                               bs.padding.left) * this.density
+        val right = clipRight - (bs.margin.right +
+                                 bs.borderRightWidth +
+                                 bs.padding.right) * this.density
         var bottom = top
 
-        val text = paragraph.text.toString()
+        if (paragraph.text.isNotEmpty()) {
 
-        if (text.isNotEmpty()) {
-            var draw = false // Measuring
+            // Measuring
 
-            while (true) {
-                val font: Font = getFont(cs.font)
+            val parser = StringParser(paragraph.text)
+            val firstIndent = (paragraph.ps.firstIndent ?: 0f) * this.density
+            val leftIndent = (paragraph.ps.leftIndent ?: 0f) * this.density
+            val rightIndent = (paragraph.ps.rightIndent ?: 0f) * this.density
+            val paragraphWidth = right - left - leftIndent - rightIndent
 
-                this.textPaint.typeface = font.typeface
-                this.textPaint.textSize = getFontSize(cs.size, font.scale)
-                this.textPaint.textScaleX = 0.85f
+            var width = 0f
+            var ascent = 0f
+            var descent = 0f
+            var baseline: Float
+            var isFirstWord = true
+            var firstWordIndex = 0
+            var isFirstLine = true
 
-                val fontMetrics = font.correctFontMetrics(this.textPaint.fontMetrics)
-                val baseline = bottom - fontMetrics.ascent
+            this.words.clear()
 
-                bottom = baseline + fontMetrics.descent + fontMetrics.leading
+            // Парсим строку абзаца
+            while (!parser.eof()) {
+                // Находим в тексте очередной участок с одним стилем
+                val spanCs = parseNextSpan(parser, paragraph, cs)
 
-                if (draw && canvas != null) {
-                    drawText(canvas, text, left, baseline, this.textPaint, true)
+                val fontMetrics = csToTextPaint(spanCs, this.textPaint)
+                ascent = Math.min(ascent, fontMetrics.ascent)
+                descent = Math.max(descent, fontMetrics.descent + fontMetrics.leading)
+
+                val inParser = StringParser(paragraph.text, parser.start, parser.pos)
+
+                // Разбиваем найденный участок на "слова" (участки между пробелами)
+                while (!inParser.eof()) {
+                    // Отделяем пробелы
+                    inParser.start()
+                    var spaces = 0
+                    while (!inParser.eof() && inParser.get() == ' ') {
+                        spaces++
+                        inParser.next()
+                    }
+
+                    // Ищем слово
+                    inParser.start()
+                    while (!inParser.eof() && inParser.get() != ' ') {
+                        inParser.next()
+                    }
+
+                    val word = Word(
+                            isFirst = isFirstWord,
+                            spaces = spaces,
+                            start = inParser.start,
+                            end = inParser.pos,
+                            cs = spanCs,
+                            spacesWidth = if (isFirstWord) 0f else this.textPaint.measureText(
+                                    paragraph.text, inParser.start - spaces, inParser.start),
+                            textWidth = this.textPaint.measureText(paragraph.text,
+                                    inParser.start, inParser.pos))
+
+                    var parsed = false
+
+                    while (!parsed) {
+                        val lineWidth = paragraphWidth - if (isFirstLine) firstIndent else 0f
+                        val out = lineWidth < width + word.spacesWidth + word.textWidth
+                        if (!out && word.end != parser.end) {
+                            isFirstWord = false
+                            width += word.spacesWidth + word.textWidth
+                            this.words.add(word)
+                            parsed = true
+                        } else {
+                            // Перенос на новую строку, завершение прошлой или последней строки в абзаце
+                            width = 0f
+                            isFirstLine = false
+
+                            baseline = bottom - ascent
+                            bottom = baseline + descent
+                            ascent = fontMetrics.ascent
+                            descent = fontMetrics.descent + fontMetrics.leading
+
+                            if (!out) {
+                                // Это последняя строка
+                                this.words.add(word)
+                                isFirstWord = true
+                                parsed = true
+                            }
+
+                            for (i in this.words.lastIndex downTo firstWordIndex) {
+                                this.words[i].y = baseline
+                            }
+
+                            firstWordIndex = this.words.size
+
+                            if (out) {
+                                // Это завершение прошлой строки, начало новой
+                                width = word.textWidth
+                                word.isFirst = true
+                                word.spacesWidth = 0f
+                                this.words.add(word)
+                                parsed = !inParser.eof()
+                            }
+                        }
+                    }
                 }
+            }
 
-                if (draw || canvas == null) break
-
-                draw = true
-
+            // Drawing
+            if (canvas != null) {
                 drawBorder(canvas, bs, top, left, bottom, right)
+
+                var x = left + leftIndent + firstIndent
+                isFirstLine = true
+
+                for (word in this.words) {
+                    csToTextPaint(word.cs, this.textPaint)
+
+                    if (word.isFirst) {
+                        x = left + leftIndent
+                        if (isFirstLine) {
+                            x += firstIndent
+                            isFirstLine = false
+                        }
+                    }
+
+                    x += word.spacesWidth
+
+                    drawText(canvas, paragraph.text, word.start, word.end,
+                            x, word.y, this.textPaint, true)
+
+                    x += word.textWidth
+                }
+//                parser.reset()
+//                var x = left
+//                while (!parser.eof()) {
+//                    val spanCs = parseNextSpan(parser, paragraph, cs)
+//
+//                    csToTextPaint(spanCs, this.textPaint)
+//                    val width = this.textPaint.measureText(parser.source, parser.start, parser.pos)
+//
+//                    drawText(canvas, parser.source, parser.start, parser.pos,
+//                            x, baseline, this.textPaint, true)
+//
+//                    x += width
+//                }
             }
         }
 
-//        for (span in paragraph.spans) {
-//            drawSpan(span, ps, cs, rect, canvas, textPaint)
-//        }
+        return bottom + (bs.padding.bottom +
+                         bs.borderBottomWidth +
+                         bs.margin.bottom) * this.density
+    }
 
-        return bottom + (bs.padding.bottom + bs.borderBottomWidth + bs.margin.bottom) * this.density
+    private fun parseNextSpan(parser: StringParser, paragraph: Paragraph, cs: CharacterStyle)
+            : CharacterStyle {
+
+        parser.start()
+
+        val start = parser.start
+        var end = parser.end
+        val spanCs = cs.clone()
+
+        for (span in paragraph.spans) {
+            if (span.start > start) {
+                end = Math.min(end, span.start)
+            } else if (span.end > start) {
+                spanCs.attach(span.cs)
+                end = Math.min(end, span.end)
+            }
+        }
+
+        parser.pos = end
+
+        return spanCs
+    }
+
+    private fun csToTextPaint(cs: CharacterStyle, textPaint: TextPaint): Paint.FontMetrics {
+
+        textPaint.reset()
+        textPaint.isAntiAlias = true
+
+        var fontName = cs.font
+        if (cs.bold == true) {
+            fontName += if (cs.italic == true) ":bold_italic" else ":bold"
+        } else if (cs.italic == true) {
+            fontName += ":italic"
+        }
+
+        val font = this.fontList?.get(fontName) ?: let {
+            cs.bold?.also { textPaint.isFakeBoldText = it }
+            cs.italic?.also { textPaint.textSkewX = if (it) -0.25f else 0f }
+            getFont(cs.font)
+        }
+
+        textPaint.typeface = font.typeface
+        textPaint.textSize = getFontSize(cs, font.scale)
+        textPaint.textScaleX = cs.scaleX
+//        textPaint.baselineShift = (cs.baselineShift * this.density + 0.5f).toInt()
+        cs.color?.also { textPaint.color = it }
+//        cs.letterSpacing?.also { textPaint.letterSpacing = it }
+        cs.strike?.also { textPaint.isStrikeThruText = it }
+        cs.underline?.also { textPaint.isUnderlineText = it }
+
+        return font.correctFontMetrics(this.textPaint.fontMetrics)
     }
 
     private fun drawBorder(canvas: Canvas,
@@ -263,8 +438,8 @@ class DocumentView(context: Context,
         return name?.let { this.fontList?.get(name) } ?: Font(Typeface.DEFAULT)
     }
 
-    private fun getFontSize(size: Float?, scale: Float): Float {
-        return (size ?: 1f) * scale * this.scaledDensity
+    private fun getFontSize(cs: CharacterStyle, scale: Float): Float {
+        return (cs.size ?: 1f) * cs.scale * scale * this.scaledDensity
     }
 
 //    override fun onDraw(canvas: Canvas) {
@@ -341,29 +516,30 @@ class DocumentView(context: Context,
 //        canvas.restore()
 //    }
 
-    fun drawText(canvas: Canvas,
-                 text: String,
-                 x: Float,
-                 y: Float,
-                 paint: Paint,
-                 drawBaseline: Boolean = false) {
+    private fun drawText(canvas: Canvas,
+                         text: CharSequence,
+                         x: Float,
+                         y: Float,
+                         paint: Paint,
+                         drawBaseline: Boolean = false): Float {
 
-        drawText(canvas, text, 0, text.length, x, y, paint, drawBaseline)
+        return drawText(canvas, text, 0, text.length, x, y, paint, drawBaseline)
     }
 
-    fun drawText(canvas: Canvas,
-                 text: String,
-                 start: Int,
-                 end: Int,
-                 x: Float,
-                 y: Float,
-                 paint: Paint,
-                 drawBaseline: Boolean = false) {
+    private fun drawText(canvas: Canvas,
+                         text: CharSequence,
+                         start: Int,
+                         end: Int,
+                         x: Float,
+                         y: Float,
+                         paint: Paint,
+                         drawBaseline: Boolean = false): Float {
+
+        val width = paint.measureText(text, start, end)
 
         if (!drawBaseline) {
             canvas.drawText(text, start, end, x, y, paint)
         } else {
-            val width = paint.measureText(text, start, end)
             val left = when (paint.textAlign) {
                 Paint.Align.CENTER -> x - width / 2
                 Paint.Align.RIGHT  -> x - width
@@ -379,5 +555,7 @@ class DocumentView(context: Context,
 
             canvas.drawText(text, start, end, x, y, paint)
         }
+
+        return width
     }
 }
