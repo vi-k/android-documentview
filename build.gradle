@@ -34,6 +34,7 @@ dependencies {
     implementation project(path: ':htmldocument')
     implementation project(path: ':parser')
     implementation project(path: ':document')
+    implementation project(path: ':colorlib')
 }
 repositories {
     mavenCentral()
