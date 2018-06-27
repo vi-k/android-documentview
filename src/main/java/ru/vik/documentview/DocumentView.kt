@@ -7,7 +7,7 @@ import android.os.Build
 import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
-import ru.vik.colorlib.ColorLib
+import ru.vik.colorlib.Color
 
 import ru.vik.document.*
 import ru.vik.parser.StringParser
@@ -39,7 +39,7 @@ class DocumentView(context: Context,
     }
 
     var baselineMode = Baseline.NONE
-    var baselineColor = Color.RED
+    var baselineColor = Color.rgb(255, 0, 0)
 
     private val textPaint = TextPaint()
     private val debugPaint = TextPaint()
@@ -63,7 +63,7 @@ class DocumentView(context: Context,
         this.paint.style = Paint.Style.FILL
 
         this.debugPaint.isAntiAlias = true
-        this.debugPaint.color = Color.RED
+        this.debugPaint.color = Color.rgb(255, 0, 0)
         this.debugPaint.isFakeBoldText = true
         this.debugPaint.textSize = 10f * this.scaledDensity
     }
@@ -78,7 +78,7 @@ class DocumentView(context: Context,
                 Color.argb(255, 0, 0, 255),
                 drawPointHandler)
 
-        this.paint.color = Color.BLACK
+        this.paint.color = Color.rgb(0, 0, 0)
         canvas.drawLine(startX * SZ, startY * SZ,
                 endX * SZ, endY * SZ,
                 this.paint)
@@ -789,11 +789,11 @@ class DocumentView(context: Context,
                         // и расчитывали вначале площадь, которую занимают в пикселе оба цвета
                         val a2 = sCom - a1
 
-                        color = ColorLib.mix(verticalColor, a1, horizontalColor, a2)
+                        color = Color.mix(verticalColor, a1, horizontalColor, a2)
                     } else if (py1 >= y2) {
-                        color = ColorLib.dilute(verticalColor, sCom)
+                        color = Color.dilute(verticalColor, sCom)
                     } else {
-                        color = ColorLib.dilute(horizontalColor, sCom)
+                        color = Color.dilute(horizontalColor, sCom)
                     }
 
                     if (drawPointHandler != null) {
@@ -869,28 +869,28 @@ class DocumentView(context: Context,
                 if (drawPointHandler != null) {
                     var x = l
                     while (x < r) {
-                        drawPointHandler(x, py1, ColorLib.dilute(color, h))
+                        drawPointHandler(x, py1, Color.dilute(color, h))
                         x += 1f
                     }
 
                     if (wl != 0f) {
-                        drawPointHandler(ll, py1, ColorLib.dilute(color, h * wl))
+                        drawPointHandler(ll, py1, Color.dilute(color, h * wl))
                     }
 
                     if (wr != 0f) {
-                        drawPointHandler(rr, py1, ColorLib.dilute(color, h * wr))
+                        drawPointHandler(rr, py1, Color.dilute(color, h * wr))
                     }
                 } else {
-                    paint.color = ColorLib.dilute(color, h)
+                    paint.color = Color.dilute(color, h)
                     canvas.drawLine(l, py1, r, py1, paint)
 
                     if (wl != 0f) {
-                        paint.color = ColorLib.dilute(color, h * wl)
+                        paint.color = Color.dilute(color, h * wl)
                         canvas.drawPoint(ll, py1, paint)
                     }
 
                     if (wr != 0f) {
-                        paint.color = ColorLib.dilute(color, h * wr)
+                        paint.color = Color.dilute(color, h * wr)
                         canvas.drawPoint(rr, py1, paint)
                     }
                 }
@@ -952,28 +952,28 @@ class DocumentView(context: Context,
                 if (drawPointHandler != null) {
                     var y = t
                     while (y < b) {
-                        drawPointHandler(px1, y, ColorLib.dilute(color, w))
+                        drawPointHandler(px1, y, Color.dilute(color, w))
                         y += 1f
                     }
 
                     if (ht != 0f) {
-                        drawPointHandler(px1, tt, ColorLib.dilute(color, w * ht))
+                        drawPointHandler(px1, tt, Color.dilute(color, w * ht))
                     }
 
                     if (hb != 0f) {
-                        drawPointHandler(px1, bb, ColorLib.dilute(color, w * hb))
+                        drawPointHandler(px1, bb, Color.dilute(color, w * hb))
                     }
                 } else {
-                    paint.color = ColorLib.dilute(color, w)
+                    paint.color = Color.dilute(color, w)
                     canvas.drawLine(px1, t, px1, b, paint)
 
                     if (ht != 0f) {
-                        paint.color = ColorLib.dilute(color, w * ht)
+                        paint.color = Color.dilute(color, w * ht)
                         canvas.drawPoint(px1, tt, paint)
                     }
 
                     if (hb != 0f) {
-                        paint.color = ColorLib.dilute(color, w * hb)
+                        paint.color = Color.dilute(color, w * hb)
                         canvas.drawPoint(px1, bb, paint)
                     }
                 }
