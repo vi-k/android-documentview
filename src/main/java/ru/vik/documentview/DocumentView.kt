@@ -7,7 +7,7 @@ import android.os.Build
 import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
-import ru.vik.colorlib.Color
+import ru.vik.color.Color
 
 import ru.vik.document.*
 import ru.vik.parser.StringParser
