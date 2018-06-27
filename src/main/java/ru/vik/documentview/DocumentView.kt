@@ -13,17 +13,15 @@ import ru.vik.document.*
 import ru.vik.parser.StringParser
 import java.util.logging.Logger
 
-typealias DrawPointHandler = (Float, Float, Int) -> Unit
-
-class DocumentView(context: Context,
-                   attrs: AttributeSet?,
-                   defStyleAttr: Int)
+open class DocumentView(context: Context,
+                        attrs: AttributeSet?,
+                        defStyleAttr: Int)
     : View(context, attrs, defStyleAttr) {
 
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
 
-    private val log = Logger.getLogger("DocumentView")!!
+    internal val log = Logger.getLogger("DocumentView")!!
 
     var document = Document()
     var fontList: FontList? = null
@@ -31,8 +29,8 @@ class DocumentView(context: Context,
     var cs = CharacterStyle.default()
     var drawEmptyParagraph = false
 
-    private val density = this.context.resources.displayMetrics.density
-    private val scaledDensity = this.context.resources.displayMetrics.scaledDensity
+    internal val density = this.context.resources.displayMetrics.density
+    internal val scaledDensity = this.context.resources.displayMetrics.scaledDensity
 
     enum class Baseline {
         NONE, INDENT, FULL
@@ -42,8 +40,7 @@ class DocumentView(context: Context,
     var baselineColor = Color.rgb(255, 0, 0)
 
     private val textPaint = TextPaint()
-    private val debugPaint = TextPaint()
-    private val paint = Paint()
+    internal val paint = Paint()
 
     class Piece(var isFirst: Boolean,
                 val spaces: Int,
@@ -61,27 +58,16 @@ class DocumentView(context: Context,
     init {
         this.paint.isAntiAlias = true
         this.paint.style = Paint.Style.FILL
-
-        this.debugPaint.isAntiAlias = true
-        this.debugPaint.color = Color.rgb(255, 0, 0)
-        this.debugPaint.isFakeBoldText = true
-        this.debugPaint.textSize = 10f * this.scaledDensity
     }
 
-    fun drawBorderCornerTest(canvas: Canvas, startX: Float, startY: Float, endX: Float, endY: Float,
-                             drawPointHandler: DrawPointHandler?) {
+    open fun drawPoint(canvas: Canvas, x: Float, y: Float, color: Int) {
+        this.paint.color = color
+        canvas.drawPoint(x, y, this.paint)
+    }
 
-        val SZ = 30f
-
-        drawBorderCorner(canvas, this.paint, startX, startY, endX, endY,
-                Color.argb(255, 255, 0, 0),
-                Color.argb(255, 0, 0, 255),
-                drawPointHandler)
-
-        this.paint.color = Color.rgb(0, 0, 0)
-        canvas.drawLine(startX * SZ, startY * SZ,
-                endX * SZ, endY * SZ,
-                this.paint)
+    open fun drawLine(canvas: Canvas, x1: Float, y1: Float, x2: Float, y2: Float, color: Int) {
+        this.paint.color = color
+        canvas.drawLine(x1, y1, x2, y2, this.paint)
     }
 
     @SuppressLint("DrawAllocation")
@@ -89,45 +75,6 @@ class DocumentView(context: Context,
         super.onDraw(canvas)
 
         drawView(canvas)
-
-        val drawPointHandler: DrawPointHandler = { x, y, color ->
-            val SZ = 30f
-            this.paint.style = Paint.Style.FILL
-            this.paint.color = color
-            canvas.drawRect(x * SZ, y * SZ,
-                    (x + 1f) * SZ, (y + 1f) * SZ,
-                    this.paint)
-        }
-
-
-//        drawBorderTest(canvas, 2.75f, 2.5f, 4.5f, 6.75f)
-//        drawBorderTest(canvas, 12.25f, 14.5f, 10.5f, 10.25f)
-//        drawBorderTest(canvas, 2.75f, 14.5f, 4.5f, 10.25f)
-//        drawBorderTest(canvas, 12.25f, 2.5f, 10.5f, 6.75f)
-
-//        drawBorderTest(canvas, 2.0f, 16.581f, 8.0f, 2.581f)
-//        drawBorderCornerTest(canvas, 2.0f, 2.419f, 8.0f, 16.419f, drawPointHandler)
-
-        val bs = BlockStyle.default()
-        bs.setBorder(Border(2.5f, Color.argb(255, 255, 255, 255)),
-                Border(3.5f, Color.argb(0, 0, 0, 0)))
-//        bs.setBorder(Border(2.5f, Color.argb(224, 255, 128, 0)),
-//                Border(3.5f, Color.argb(224, 0, 255, 128)))
-
-        val leftBorder = bs.border.left
-        drawBorder(canvas, bs, 6f, 8f, 11f, 15f, drawPointHandler)
-        drawBorder(canvas, bs, 24.5f, 8.5f, 29.5f, 15.5f, drawPointHandler)
-        bs.border.left = null
-        drawBorder(canvas, bs, 42.5f, 8.5f, 47.5f, 15.5f, drawPointHandler)
-        bs.border.right = null
-        drawBorder(canvas, bs, 60.5f, 8.5f, 65.5f, 15.5f, drawPointHandler)
-        bs.setBorder(null, leftBorder)
-        drawBorder(canvas, bs, 78.5f, 8.5f, 83.5f, 15.5f, drawPointHandler)
-    }
-
-    private fun drawTimeElapsed(canvas: Canvas, timeMillisElapsed: Long, x: Float, y: Float) {
-        drawText(canvas, String.format("%.3f", timeMillisElapsed / 1000f),
-                x, y, this.debugPaint)
     }
 
     private fun drawView(canvas: Canvas?, width: Int = this.width): Float {
@@ -140,15 +87,13 @@ class DocumentView(context: Context,
         } ?: 0f
     }
 
-    private fun drawSection(canvas: Canvas?,
-                            section: Section,
-                            parentPs: ParagraphStyle,
-                            parentCs: CharacterStyle,
-                            clipTop: Float,
-                            clipLeft: Float,
-                            clipRight: Float): Float {
-
-        val t = System.currentTimeMillis()
+    open fun drawSection(canvas: Canvas?,
+                         section: Section,
+                         parentPs: ParagraphStyle,
+                         parentCs: CharacterStyle,
+                         clipTop: Float,
+                         clipLeft: Float,
+                         clipRight: Float): Float {
 
         val ps = parentPs.clone().attach(section.ps)
         val cs = parentCs.clone().attach(section.cs)
@@ -192,10 +137,6 @@ class DocumentView(context: Context,
                         bottom = drawParagraph(canvas, item, ps, cs, bottom, left, right)
                 }
             }
-
-            drawTimeElapsed(canvas, System.currentTimeMillis() - t,
-                    clipLeft + (bs.margin.left + bs.borderLeftWidth) * this.density,
-                    bottom + bs.padding.bottom * this.density)
         }
 
         return bottom + (bs.padding.bottom +
@@ -204,15 +145,13 @@ class DocumentView(context: Context,
     }
 
     // Отрисовка абзаца
-    private fun drawParagraph(canvas: Canvas?,
+    open fun drawParagraph(canvas: Canvas?,
                               paragraph: Paragraph,
                               parentPs: ParagraphStyle,
                               parentCs: CharacterStyle,
                               clipTop: Float,
                               clipLeft: Float,
                               clipRight: Float): Float {
-
-        val t = System.currentTimeMillis()
 
         val ps = parentPs.clone().attach(paragraph.ps)
         val cs = parentCs.clone().attach(paragraph.cs)
@@ -455,10 +394,6 @@ class DocumentView(context: Context,
 
                     x += piece.textWidth
                 }
-
-                drawTimeElapsed(canvas, System.currentTimeMillis() - t,
-                        clipLeft + (bs.margin.left + bs.borderLeftWidth) * this.density,
-                        bottom + bs.padding.bottom * this.density)
             }
         }
 
@@ -517,16 +452,15 @@ class DocumentView(context: Context,
         cs.strike?.also { textPaint.isStrikeThruText = it }
         cs.underline?.also { textPaint.isUnderlineText = it }
 
-        return font.correctFontMetrics(this.textPaint.fontMetrics)
+        return font.correctFontMetrics(textPaint.fontMetrics)
     }
 
-    private fun drawBorder(canvas: Canvas,
-                           bs: BlockStyle,
-                           top: Float,
-                           left: Float,
-                           bottom: Float,
-                           right: Float,
-                           drawPointHandler: DrawPointHandler? = null) {
+    internal fun drawBorder(canvas: Canvas,
+                            bs: BlockStyle,
+                            top: Float,
+                            left: Float,
+                            bottom: Float,
+                            right: Float) {
 
         val inTop = top - bs.padding.top * this.density
         val inLeft = left - bs.padding.left * this.density
@@ -562,16 +496,15 @@ class DocumentView(context: Context,
 
             bs.border.left?.also { leftBorder ->
                 drawBorderCorner(canvas, this.paint, outLeft, outTop, inLeft, inTop,
-                        leftBorder.color, topBorder.color, drawPointHandler)
+                        leftBorder.color, topBorder.color)
             }
 
             bs.border.right?.also { rightBorder ->
                 drawBorderCorner(canvas, this.paint, outRight, outTop, inRight, inTop,
-                        rightBorder.color, topBorder.color, drawPointHandler)
+                        rightBorder.color, topBorder.color)
             }
 
-            drawBorderHLine(canvas, this.paint, l, r, outTop, inTop, topBorder.color,
-                    drawPointHandler)
+            drawBorderHLine(canvas, this.paint, l, r, outTop, inTop, topBorder.color)
         }
 
         bs.border.bottom?.also { bottomBorder ->
@@ -579,26 +512,23 @@ class DocumentView(context: Context,
 
             bs.border.left?.also { leftBorder ->
                 drawBorderCorner(canvas, this.paint, outLeft, outBottom, inLeft, inBottom,
-                        leftBorder.color, bottomBorder.color, drawPointHandler)
+                        leftBorder.color, bottomBorder.color)
             }
 
             bs.border.right?.also { rightBorder ->
                 drawBorderCorner(canvas, this.paint, outRight, outBottom, inRight, inBottom,
-                        rightBorder.color, bottomBorder.color, drawPointHandler)
+                        rightBorder.color, bottomBorder.color)
             }
 
-            drawBorderHLine(canvas, this.paint, l, r, inBottom, outBottom, bottomBorder.color,
-                    drawPointHandler)
+            drawBorderHLine(canvas, this.paint, l, r, inBottom, outBottom, bottomBorder.color)
         }
 
         bs.border.left?.also {
-            drawBorderVLine(canvas, this.paint, t, b, outLeft, inLeft, it.color,
-                    drawPointHandler)
+            drawBorderVLine(canvas, this.paint, t, b, outLeft, inLeft, it.color)
         }
 
         bs.border.right?.also {
-            drawBorderVLine(canvas, this.paint, t, b, inRight, outRight, it.color,
-                    drawPointHandler)
+            drawBorderVLine(canvas, this.paint, t, b, inRight, outRight, it.color)
         }
     }
 
@@ -610,12 +540,12 @@ class DocumentView(context: Context,
         return (cs.size ?: 1f) * cs.scale * scale * this.scaledDensity
     }
 
-    private fun drawText(canvas: Canvas,
-                         text: CharSequence,
-                         x: Float,
-                         y: Float,
-                         paint: Paint,
-                         drawBaseline: Boolean = false): Float {
+    internal fun drawText(canvas: Canvas,
+                          text: CharSequence,
+                          x: Float,
+                          y: Float,
+                          paint: Paint,
+                          drawBaseline: Boolean = false): Float {
 
         return drawText(canvas, text, 0, text.length, x, y, paint, drawBaseline)
     }
@@ -686,302 +616,239 @@ class DocumentView(context: Context,
         setMeasuredDimension(width, height)
     }
 
-    companion object {
-        /**
-         * Прорисовка угла рамки.
-         *
-         * Рамка вокруг текста может состоят из линий разных цветов. Собственно, эта функция
-         * соединяет эти линии, смешивая цвета.
-         *
-         * @param outX
-         * @param outY Координаты внешнего угла рамки
-         * @param inX
-         * @param inY Координаты внутреннего угла рамки
-         * @param verticalColor Цвет вертикальной линии рамки
-         * @param horizontalColor Цвет горизонтальной линии рамки
-         * @param drawPointHandler Обработчик для прорисовки
-         */
-        private fun drawBorderCorner(canvas: Canvas, paint: Paint,
-                                     outX: Float, outY: Float,
-                                     inX: Float, inY: Float,
-                                     verticalColor: Int, horizontalColor: Int,
-                                     drawPointHandler: DrawPointHandler? = null) {
+    /**
+     * Прорисовка угла рамки.
+     *
+     * Рамка вокруг текста может состоят из линий разных цветов. Собственно, эта функция
+     * соединяет эти линии, смешивая цвета.
+     *
+     * @param outX
+     * @param outY Координаты внешнего угла рамки
+     * @param inX
+     * @param inY Координаты внутреннего угла рамки
+     * @param verticalColor Цвет вертикальной линии рамки
+     * @param horizontalColor Цвет горизонтальной линии рамки
+     */
+    private fun drawBorderCorner(canvas: Canvas, paint: Paint,
+                                 outX: Float, outY: Float,
+                                 inX: Float, inY: Float,
+                                 verticalColor: Int, horizontalColor: Int) {
 
-            // Для удобства расчётов будем всегда двигаться вправо и вниз,
-            // переводя в нужное направление только при выводе
-            val signX = if (inX > outX) 1.0 else -1.0
-            val signY = if (inY > outY) 1.0 else -1.0
+        // Для удобства расчётов будем всегда двигаться вправо и вниз,
+        // переводя в нужное направление только при выводе
+        val signX = if (inX > outX) 1.0 else -1.0
+        val signY = if (inY > outY) 1.0 else -1.0
 
-            // Смещение на 1 пиксель нужно, т.к. после смены знака надо и точки рисовать
-            // в другую сторону. Вот чтобы этого избежать смещаемся на 1 пиксель
-            val offsetX = if (signX < 0.0) -1.0 else 0.0
-            val offsetY = if (signY < 0.0) -1.0 else 0.0
+        // Смещение на 1 пиксель нужно, т.к. после смены знака надо и точки рисовать
+        // в другую сторону. Вот чтобы этого избежать смещаемся на 1 пиксель
+        val offsetX = if (signX < 0.0) -1.0 else 0.0
+        val offsetY = if (signY < 0.0) -1.0 else 0.0
 
-            val xStart = signX * outX
-            val yStart = signY * outY
-            val xEnd = signX * inX
-            val yEnd = signY * inY
+        val xStart = signX * outX
+        val yStart = signY * outY
+        val xEnd = signX * inX
+        val yEnd = signY * inY
 
-            val width = xEnd - xStart
-            val height = yEnd - yStart
-            var x1 = xStart
-            var y1 = yStart
+        val width = xEnd - xStart
+        val height = yEnd - yStart
+        var x1 = xStart
+        var y1 = yStart
 
-            // Изменения по осям X и Y (по оси X всегда на 1 пиксель)
-            val dy = height / width
+        // Изменения по осям X и Y (по оси X всегда на 1 пиксель)
+        val dy = height / width
 
-            val isAntiAlias = paint.isAntiAlias
-            paint.isAntiAlias = false
+        val isAntiAlias = paint.isAntiAlias
+        paint.isAntiAlias = false
 
-            // Проходим попиксельно по оси x
-            while (x1 < xEnd) {
-                // В каком пикселе мы сейчас находимся (px1,py1) - (px2,py2)
-                val px1 = Math.floor(x1)
-                val px2 = px1 + 1.0
-                var py1 = Math.floor(yStart)
+        // Проходим попиксельно по оси x
+        while (x1 < xEnd) {
+            // В каком пикселе мы сейчас находимся (px1,py1) - (px2,py2)
+            val px1 = Math.floor(x1)
+            val px2 = px1 + 1.0
+            var py1 = Math.floor(yStart)
 
-                // Получаем прямоугольный треугольник (x1,y1) - (x1,y2) - (x2,y2),
-                // в котором x2 выровнено по границе, т.е. по оси X мы всегда будем
-                // находиться внутри одного пикселя, а по оси Y будем спускаться вниз
-                val x2 = Math.min(px2, xEnd)
-                val w = x2 - x1
-                val y2 = y1 + w * dy // Если расчёты x2 верны, то за yEnd мы не выйдем
-                val h = y2 - y1
+            // Получаем прямоугольный треугольник (x1,y1) - (x1,y2) - (x2,y2),
+            // в котором x2 выровнено по границе, т.е. по оси X мы всегда будем
+            // находиться внутри одного пикселя, а по оси Y будем спускаться вниз
+            val x2 = Math.min(px2, xEnd)
+            val w = x2 - x1
+            val y2 = y1 + w * dy // Если расчёты x2 верны, то за yEnd мы не выйдем
+            val h = y2 - y1
 
-                // Полная площадь полученного треугольника
-                val s = w * h / 2.0
-                var siSum = 0.0 // Двигаясь по оси Y, будем понемногу выбирать нужную нам площадь
+            // Полная площадь полученного треугольника
+            val s = w * h / 2.0
+            var siSum = 0.0 // Двигаясь по оси Y, будем понемногу выбирать нужную нам площадь
 
-                // Теперь попиксельно движемся по оси Y
-                while (py1 < yEnd) {
+            // Теперь попиксельно движемся по оси Y
+            while (py1 < yEnd) {
 
-                    var color: Int
-                    val py2 = py1 + 1.0
+                var color: Int
+                val py2 = py1 + 1.0
 
-                    // Площадь, которую занимают в пикселе оба цвета
-                    var sCom = (px2 - Math.max(px1, xStart)) *
-                               (py2 - Math.max(py1, yStart))
-                    if (px2 > xEnd && py2 > yEnd) {
-                        sCom -= (px2 - xEnd) * (py2 - yEnd)
-                    }
-
-                    if (py1 < y2 && py2 > y1) {
-                        val yi = Math.min(py2, y2)
-                        val hi = Math.max(yi - y1, 0.0)
-
-                        // Альфа первого цвета зависит от площади, которую занимает треугольник
-                        // в данном пикселе. В первом пикселе эта площадь пропорциональна площади
-                        // всего треугольника (учитываем только, что при уменьшении высоты площадь
-                        // уменьшается в квадрате). Площади в следующих пикселях вычисляем также
-                        // через расчёт площади треугольника, только потом отнимаем площадь верхушки,
-                        // оставшейся в предыдущих пикселях
-                        val k = hi / h
-                        val si = s * k * k - siSum
-                        siSum += si
-
-                        // Для рассчёта альфы остаётся к площади добавить прямоугольник
-                        // (если он есть), расположенный ниже основания нашего треугольника
-                        val a1 = si + w * (py2 - yi)
-
-                        // В тех пикселях, где второй цвет занимает всю оставшуюся площадь, проблем
-                        // с вычислением альфы второго цвета нет (a2 = 1 - a1). Сложности возникают
-                        // на границах, где оба цвета занимают лишь часть пикселя. Для этого мы
-                        // и расчитывали вначале площадь, которую занимают в пикселе оба цвета
-                        val a2 = sCom - a1
-
-                        color = Color.mix(verticalColor, a1, horizontalColor, a2)
-                    } else if (py1 >= y2) {
-                        color = Color.dilute(verticalColor, sCom)
-                    } else {
-                        color = Color.dilute(horizontalColor, sCom)
-                    }
-
-                    if (drawPointHandler != null) {
-                        drawPointHandler(
-                                (offsetX + signX * px1).toFloat(),
-                                (offsetY + signY * py1).toFloat(), color)
-                    } else {
-                        paint.color = color
-                        canvas.drawPoint(
-                                (offsetX + signX * px1).toFloat(),
-                                (offsetY + signY * py1).toFloat(),
-                                paint)
-                    }
-
-                    py1 = py2
+                // Площадь, которую занимают в пикселе оба цвета
+                var sCom = (px2 - Math.max(px1, xStart)) *
+                           (py2 - Math.max(py1, yStart))
+                if (px2 > xEnd && py2 > yEnd) {
+                    sCom -= (px2 - xEnd) * (py2 - yEnd)
                 }
 
-                y1 = y2
-                x1 = x2
-            }
+                if (py1 < y2 && py2 > y1) {
+                    val yi = Math.min(py2, y2)
+                    val hi = Math.max(yi - y1, 0.0)
 
-            paint.isAntiAlias = isAntiAlias
-        }
+                    // Альфа первого цвета зависит от площади, которую занимает треугольник
+                    // в данном пикселе. В первом пикселе эта площадь пропорциональна площади
+                    // всего треугольника (учитываем только, что при уменьшении высоты площадь
+                    // уменьшается в квадрате). Площади в следующих пикселях вычисляем также
+                    // через расчёт площади треугольника, только потом отнимаем площадь верхушки,
+                    // оставшейся в предыдущих пикселях
+                    val k = hi / h
+                    val si = s * k * k - siSum
+                    siSum += si
 
-        /**
-         * Прорисовка горизотальных линий рамки.
-         *
-         * Для прорисовки линий рамки вместе с функцией drawBorderCorner().
-         *
-         * @param canvas Канвас.
-         * @param paint Готовый объект класса Paint().
-         * @param left Левая граница линии.
-         * @param right Правая граница линии.
-         * @param top Верх линии.
-         * @param bottom Низ линии.
-         * @param color Цвет линии.
-         */
-        private fun drawBorderHLine(canvas: Canvas, paint: Paint,
-                                    left: Float, right: Float,
-                                    top: Float, bottom: Float,
-                                    color: Int,
-                                    drawPointHandler: DrawPointHandler? = null) {
+                    // Для рассчёта альфы остаётся к площади добавить прямоугольник
+                    // (если он есть), расположенный ниже основания нашего треугольника
+                    val a1 = si + w * (py2 - yi)
 
-            // Координаты для линии из "чистого" цвета
-            val l = Math.ceil(left.toDouble()).toFloat()
-            val r = Math.floor(right.toDouble()).toFloat()
+                    // В тех пикселях, где второй цвет занимает всю оставшуюся площадь, проблем
+                    // с вычислением альфы второго цвета нет (a2 = 1 - a1). Сложности возникают
+                    // на границах, где оба цвета занимают лишь часть пикселя. Для этого мы
+                    // и расчитывали вначале площадь, которую занимают в пикселе оба цвета
+                    val a2 = sCom - a1
 
-            var py1 = Math.floor(top.toDouble()).toFloat()
-
-            // Координаты и размеры отступов слева и справа, для которых понадобится antialias
-            var wl = 0f
-            var wr = 0f
-            var ll = 0f
-            var rr = 0f
-
-            if (left < l) {
-                wl = l - left
-                ll = Math.floor(left.toDouble()).toFloat()
-            }
-
-            if (right > r) {
-                wr = right - r
-                rr = Math.floor(right.toDouble()).toFloat()
-            }
-
-            val isAntiAlias = paint.isAntiAlias
-            paint.isAntiAlias = false
-
-            while (py1 < bottom) {
-                val py2 = py1 + 1f
-                val h = Math.min(py2, bottom) - Math.max(py1, top)
-
-                if (drawPointHandler != null) {
-                    var x = l
-                    while (x < r) {
-                        drawPointHandler(x, py1, Color.dilute(color, h))
-                        x += 1f
-                    }
-
-                    if (wl != 0f) {
-                        drawPointHandler(ll, py1, Color.dilute(color, h * wl))
-                    }
-
-                    if (wr != 0f) {
-                        drawPointHandler(rr, py1, Color.dilute(color, h * wr))
-                    }
+                    color = Color.mix(verticalColor, a1, horizontalColor, a2)
+                } else if (py1 >= y2) {
+                    color = Color.dilute(verticalColor, sCom)
                 } else {
-                    paint.color = Color.dilute(color, h)
-                    canvas.drawLine(l, py1, r, py1, paint)
-
-                    if (wl != 0f) {
-                        paint.color = Color.dilute(color, h * wl)
-                        canvas.drawPoint(ll, py1, paint)
-                    }
-
-                    if (wr != 0f) {
-                        paint.color = Color.dilute(color, h * wr)
-                        canvas.drawPoint(rr, py1, paint)
-                    }
+                    color = Color.dilute(horizontalColor, sCom)
                 }
+
+                drawPoint(canvas,
+                        (offsetX + signX * px1).toFloat(),
+                        (offsetY + signY * py1).toFloat(),
+                        color)
 
                 py1 = py2
             }
 
-            paint.isAntiAlias = isAntiAlias
+            y1 = y2
+            x1 = x2
         }
 
-        /**
-         * Прорисовка вертикальных линий рамки.
-         *
-         * Для прорисовки линий рамки вместе с функцией drawBorderCorner().
-         *
-         * @param canvas Канвас.
-         * @param paint Готовый объект класса Paint().
-         * @param top Верхняя граница линии.
-         * @param bottom Нижняя граница линии.
-         * @param left Левая сторона линии.
-         * @param right Правая сторона линии.
-         * @param color Цвет линии.
-         */
-        private fun drawBorderVLine(canvas: Canvas, paint: Paint,
-                                    top: Float, bottom: Float,
-                                    left: Float, right: Float,
-                                    color: Int,
-                                    drawPointHandler: DrawPointHandler? = null) {
+        paint.isAntiAlias = isAntiAlias
+    }
 
-            // Координаты для линии из "чистого" цвета
-            val t = Math.ceil(top.toDouble()).toFloat()
-            val b = Math.floor(bottom.toDouble()).toFloat()
+    /**
+     * Прорисовка горизотальных линий рамки.
+     *
+     * Для прорисовки линий рамки вместе с функцией drawBorderCorner().
+     *
+     * @param canvas Канвас.
+     * @param paint Готовый объект класса Paint().
+     * @param left Левая граница линии.
+     * @param right Правая граница линии.
+     * @param top Верх линии.
+     * @param bottom Низ линии.
+     * @param color Цвет линии.
+     */
+    private fun drawBorderHLine(canvas: Canvas, paint: Paint,
+                                left: Float, right: Float,
+                                top: Float, bottom: Float,
+                                color: Int) {
 
-            var px1 = Math.floor(left.toDouble()).toFloat()
+        // Координаты для линии из "чистого" цвета
+        val l = Math.ceil(left.toDouble()).toFloat()
+        val r = Math.floor(right.toDouble()).toFloat()
 
-            // Координаты и размеры отступов сверху и снизу, для которых понадобится antialias
-            var ht = 0f
-            var hb = 0f
-            var tt = 0f
-            var bb = 0f
+        var py1 = Math.floor(top.toDouble()).toFloat()
 
-            if (top < t) {
-                ht = t - top
-                tt = Math.floor(top.toDouble()).toFloat()
-            }
+        // Координаты и размеры отступов слева и справа, для которых понадобится antialias
+        var wl = 0f
+        var wr = 0f
+        var ll = 0f
+        var rr = 0f
 
-            if (bottom > b) {
-                hb = bottom - b
-                bb = Math.floor(bottom.toDouble()).toFloat()
-            }
-
-            val isAntiAlias = paint.isAntiAlias
-            paint.isAntiAlias = false
-
-            while (px1 < right) {
-                val px2 = px1 + 1f
-                val w = Math.min(px2, right) - Math.max(px1, left)
-
-                if (drawPointHandler != null) {
-                    var y = t
-                    while (y < b) {
-                        drawPointHandler(px1, y, Color.dilute(color, w))
-                        y += 1f
-                    }
-
-                    if (ht != 0f) {
-                        drawPointHandler(px1, tt, Color.dilute(color, w * ht))
-                    }
-
-                    if (hb != 0f) {
-                        drawPointHandler(px1, bb, Color.dilute(color, w * hb))
-                    }
-                } else {
-                    paint.color = Color.dilute(color, w)
-                    canvas.drawLine(px1, t, px1, b, paint)
-
-                    if (ht != 0f) {
-                        paint.color = Color.dilute(color, w * ht)
-                        canvas.drawPoint(px1, tt, paint)
-                    }
-
-                    if (hb != 0f) {
-                        paint.color = Color.dilute(color, w * hb)
-                        canvas.drawPoint(px1, bb, paint)
-                    }
-                }
-
-                px1 = px2
-            }
-
-            paint.isAntiAlias = isAntiAlias
+        if (left < l) {
+            wl = l - left
+            ll = Math.floor(left.toDouble()).toFloat()
         }
+
+        if (right > r) {
+            wr = right - r
+            rr = Math.floor(right.toDouble()).toFloat()
+        }
+
+        val isAntiAlias = paint.isAntiAlias
+        paint.isAntiAlias = false
+
+        while (py1 < bottom) {
+            val py2 = py1 + 1f
+            val h = Math.min(py2, bottom) - Math.max(py1, top)
+
+            drawLine(canvas, l, py1, r, py1, Color.dilute(color, h))
+            if (wl != 0f) drawPoint(canvas, ll, py1, Color.dilute(color, h * wl))
+            if (wr != 0f) drawPoint(canvas, rr, py1, Color.dilute(color, h * wr))
+
+            py1 = py2
+        }
+
+        paint.isAntiAlias = isAntiAlias
+    }
+
+    /**
+     * Прорисовка вертикальных линий рамки.
+     *
+     * Для прорисовки линий рамки вместе с функцией drawBorderCorner().
+     *
+     * @param canvas Канвас.
+     * @param paint Готовый объект класса Paint().
+     * @param top Верхняя граница линии.
+     * @param bottom Нижняя граница линии.
+     * @param left Левая сторона линии.
+     * @param right Правая сторона линии.
+     * @param color Цвет линии.
+     */
+    private fun drawBorderVLine(canvas: Canvas, paint: Paint,
+                                top: Float, bottom: Float,
+                                left: Float, right: Float,
+                                color: Int) {
+
+        // Координаты для линии из "чистого" цвета
+        val t = Math.ceil(top.toDouble()).toFloat()
+        val b = Math.floor(bottom.toDouble()).toFloat()
+
+        var px1 = Math.floor(left.toDouble()).toFloat()
+
+        // Координаты и размеры отступов сверху и снизу, для которых понадобится antialias
+        var ht = 0f
+        var hb = 0f
+        var tt = 0f
+        var bb = 0f
+
+        if (top < t) {
+            ht = t - top
+            tt = Math.floor(top.toDouble()).toFloat()
+        }
+
+        if (bottom > b) {
+            hb = bottom - b
+            bb = Math.floor(bottom.toDouble()).toFloat()
+        }
+
+        val isAntiAlias = paint.isAntiAlias
+        paint.isAntiAlias = false
+
+        while (px1 < right) {
+            val px2 = px1 + 1f
+            val w = Math.min(px2, right) - Math.max(px1, left)
+
+            drawLine(canvas, px1, t, px1, b, Color.dilute(color, w))
+            if (ht != 0f) drawPoint(canvas, px1, tt, Color.dilute(color, w * ht))
+            if (hb != 0f) drawPoint(canvas, px1, bb, Color.dilute(color, w * hb))
+
+            px1 = px2
+        }
+
+        paint.isAntiAlias = isAntiAlias
     }
 }
