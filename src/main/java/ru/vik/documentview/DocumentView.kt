@@ -21,7 +21,7 @@ open class DocumentView(context: Context,
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
 
-    internal val log = Logger.getLogger("DocumentView")!!
+    private val log = Logger.getLogger("DocumentView")!!
 
     var document = Document()
     var fontList: FontList? = null
@@ -49,8 +49,9 @@ open class DocumentView(context: Context,
                 val cs: CharacterStyle,
                 val ascent: Float,
                 val descent: Float,
-                var spacesWidth: Float = 0f,
-                val textWidth: Float = 0f,
+                var spacesWidth: Float,
+                val textWidth: Float,
+                val hyphenWidth: Float,
                 var baseline: Float = 0f)
 
     private var pieces = mutableListOf<Piece>()
@@ -70,7 +71,6 @@ open class DocumentView(context: Context,
         canvas.drawLine(x1, y1, x2, y2, this.paint)
     }
 
-    @SuppressLint("DrawAllocation")
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
@@ -146,12 +146,12 @@ open class DocumentView(context: Context,
 
     // Отрисовка абзаца
     open fun drawParagraph(canvas: Canvas?,
-                              paragraph: Paragraph,
-                              parentPs: ParagraphStyle,
-                              parentCs: CharacterStyle,
-                              clipTop: Float,
-                              clipLeft: Float,
-                              clipRight: Float): Float {
+                           paragraph: Paragraph,
+                           parentPs: ParagraphStyle,
+                           parentCs: CharacterStyle,
+                           clipTop: Float,
+                           clipLeft: Float,
+                           clipRight: Float): Float {
 
         val ps = parentPs.clone().attach(paragraph.ps)
         val cs = parentCs.clone().attach(paragraph.cs)
@@ -209,7 +209,13 @@ open class DocumentView(context: Context,
 
                     // Ищем слово (слово = не-пробелы)
                     inParser.start()
-                    while (!inParser.eof() && inParser.get() != ' ') {
+                    while (!inParser.eof() && inParser.get() != ' ' && inParser.get() != '\u00AD') {
+                        inParser.next()
+                    }
+
+                    var withHyphen = false
+                    if (!inParser.eof() && inParser.get() == '\u00AD') {
+                        withHyphen = true
                         inParser.next()
                     }
 
@@ -221,10 +227,16 @@ open class DocumentView(context: Context,
                             cs = spanCs,
                             ascent = fontMetrics.ascent,
                             descent = fontMetrics.descent + fontMetrics.leading,
-                            spacesWidth = if (isFirst) 0f else this.textPaint.measureText(
-                                    paragraph.text, inParser.start - spaces, inParser.start),
+                            spacesWidth =
+                            if (isFirst) 0f
+                            else this.textPaint.measureText(paragraph.text,
+                                    inParser.start - spaces, inParser.start),
                             textWidth = this.textPaint.measureText(paragraph.text,
-                                    inParser.start, inParser.pos))
+                                    inParser.start, inParser.pos),
+                            hyphenWidth =
+                            if (withHyphen) this.textPaint.measureText("-")
+                            else 0f
+                    )
 
                     var parsed = false // В некоторых случаях надо будет делать два прохода
 
@@ -255,6 +267,17 @@ open class DocumentView(context: Context,
                                     // а только по границе слов. Учитываем это - ищем начало слова,
                                     // чтобы отделить его от текущей строки
                                     while (last >= first) {
+                                        val hyphenWidth = this.pieces[last].hyphenWidth
+                                        if (hyphenWidth != 0f) {
+                                            var w = hyphenWidth
+                                            for (i in first..last) {
+                                                w += this.pieces[i].spacesWidth +
+                                                        this.pieces[i].textWidth
+                                            }
+
+                                            if (lineWidth >= w) break
+                                        }
+
                                         if (this.pieces[last--].spaces != 0) break
                                     }
                                 }
@@ -325,6 +348,8 @@ open class DocumentView(context: Context,
                     }
                 }
 
+                var lastPieceIndex = 0
+
                 for (i in 0 until this.pieces.size) {
                     val piece = this.pieces[i]
                     csToTextPaint(piece.cs, this.textPaint)
@@ -352,12 +377,16 @@ open class DocumentView(context: Context,
                         val lineWidth = rightOfLine - leftOfLine
                         x = leftOfLine
 
+                        for (j in i until this.pieces.size) {
+                            if (this.pieces[j].isFirst && this.pieces[j] !== piece) break
+                            lastPieceIndex = j
+                        }
+
                         if (align != ParagraphStyle.Align.LEFT) {
-                            width = 0f
+                            width = this.pieces[lastPieceIndex].hyphenWidth
                             var spacesWidth = 0f
-                            for (j in i until this.pieces.size) {
+                            for (j in i..lastPieceIndex) {
                                 val p = this.pieces[j]
-                                if (p !== piece && p.isFirst) break
                                 width += p.spacesWidth + p.textWidth
                                 spacesWidth += p.spacesWidth
                             }
@@ -389,8 +418,11 @@ open class DocumentView(context: Context,
 
                     x += piece.spacesWidth * spaceK
 
+                    val withHyphen = i == lastPieceIndex &&
+                                     this.pieces[lastPieceIndex].hyphenWidth != 0f
+
                     drawText(canvas, paragraph.text, piece.start, piece.end,
-                            x, piece.baseline, this.textPaint)
+                            x, piece.baseline, withHyphen, this.textPaint)
 
                     x += piece.textWidth
                 }
@@ -544,10 +576,11 @@ open class DocumentView(context: Context,
                           text: CharSequence,
                           x: Float,
                           y: Float,
+                          withHyphen: Boolean,
                           paint: Paint,
                           drawBaseline: Boolean = false): Float {
 
-        return drawText(canvas, text, 0, text.length, x, y, paint, drawBaseline)
+        return drawText(canvas, text, 0, text.length, x, y, withHyphen, paint, drawBaseline)
     }
 
     private fun drawText(canvas: Canvas,
@@ -556,6 +589,7 @@ open class DocumentView(context: Context,
                          end: Int,
                          x: Float,
                          y: Float,
+                         withHyphen: Boolean,
                          paint: Paint,
                          drawBaseline: Boolean = false): Float {
 
@@ -563,6 +597,7 @@ open class DocumentView(context: Context,
 
         if (!drawBaseline) {
             canvas.drawText(text, start, end, x, y, paint)
+            if (withHyphen) canvas.drawText("-", x + width, y, paint)
         } else {
             val left = when (paint.textAlign) {
                 Paint.Align.CENTER -> x - width / 2
@@ -578,6 +613,7 @@ open class DocumentView(context: Context,
             paint.color = textColor
 
             canvas.drawText(text, start, end, x, y, paint)
+            if (withHyphen) canvas.drawText("-", x + width, y, paint)
         }
 
         return width

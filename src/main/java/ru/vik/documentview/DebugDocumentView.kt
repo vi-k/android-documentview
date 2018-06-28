@@ -97,7 +97,7 @@ class DebugDocumentView(context: Context,
 
     private fun drawTimeElapsed(canvas: Canvas, timeMillisElapsed: Long, x: Float, y: Float) {
         drawText(canvas, String.format("%.3f", timeMillisElapsed / 1000f),
-                x, y, this.debugPaint)
+                x, y, false, this.debugPaint)
     }
 
     override fun drawSection(canvas: Canvas?,
