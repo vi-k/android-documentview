@@ -2,12 +2,18 @@ package ru.vik.documentview
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.*
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.text.TextPaint
 import android.util.AttributeSet
-import ru.vik.color.Color
 
-import ru.vik.document.*
+import ru.vik.utils.color.Color
+import ru.vik.utils.document.BlockStyle
+import ru.vik.utils.document.Border
+import ru.vik.utils.document.CharacterStyle
+import ru.vik.utils.document.Paragraph
+import ru.vik.utils.document.ParagraphStyle
+import ru.vik.utils.document.Section
 
 class DebugDocumentView(context: Context,
                         attrs: AttributeSet?,

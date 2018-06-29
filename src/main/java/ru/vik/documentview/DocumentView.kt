@@ -7,11 +7,16 @@ import android.os.Build
 import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
-import ru.vik.color.Color
-
-import ru.vik.document.*
-import ru.vik.parser.StringParser
 import java.util.logging.Logger
+
+import ru.vik.utils.parser.StringParser
+import ru.vik.utils.color.mix
+import ru.vik.utils.document.BlockStyle
+import ru.vik.utils.document.CharacterStyle
+import ru.vik.utils.document.Document
+import ru.vik.utils.document.Paragraph
+import ru.vik.utils.document.ParagraphStyle
+import ru.vik.utils.document.Section
 
 open class DocumentView(context: Context,
                         attrs: AttributeSet?,
@@ -476,9 +481,10 @@ open class DocumentView(context: Context,
         }
 
         textPaint.typeface = font.typeface
-        textPaint.textSize = getFontSize(cs, font.scale)
+        val fontSize = getFontSize(cs, font.scale)
+        textPaint.textSize = fontSize
         textPaint.textScaleX = cs.scaleX
-//        textPaint.baselineShift = (cs.baselineShift * this.density + 0.5f).toInt()
+//        cs.baselineShift?.also { textPaint.baselineShift = it.toPx(fontSize).posRoundToInt() }
         cs.color?.also { textPaint.color = it }
 //        cs.letterSpacing?.also { textPaint.letterSpacing = it }
         cs.strike?.also { textPaint.isStrikeThruText = it }
@@ -752,11 +758,11 @@ open class DocumentView(context: Context,
                     // и расчитывали вначале площадь, которую занимают в пикселе оба цвета
                     val a2 = sCom - a1
 
-                    color = Color.mix(verticalColor, a1, horizontalColor, a2)
+                    color = verticalColor.mix(a1, horizontalColor, a2)
                 } else if (py1 >= y2) {
-                    color = Color.dilute(verticalColor, sCom)
+                    color = verticalColor.mix(sCom)
                 } else {
-                    color = Color.dilute(horizontalColor, sCom)
+                    color = horizontalColor.mix(sCom)
                 }
 
                 drawPoint(canvas,
@@ -821,9 +827,9 @@ open class DocumentView(context: Context,
             val py2 = py1 + 1f
             val h = Math.min(py2, bottom) - Math.max(py1, top)
 
-            drawLine(canvas, l, py1, r, py1, Color.dilute(color, h))
-            if (wl != 0f) drawPoint(canvas, ll, py1, Color.dilute(color, h * wl))
-            if (wr != 0f) drawPoint(canvas, rr, py1, Color.dilute(color, h * wr))
+            drawLine(canvas, l, py1, r, py1, color.mix(h))
+            if (wl != 0f) drawPoint(canvas, ll, py1, color.mix(h * wl))
+            if (wr != 0f) drawPoint(canvas, rr, py1, color.mix(h * wr))
 
             py1 = py2
         }
@@ -878,9 +884,9 @@ open class DocumentView(context: Context,
             val px2 = px1 + 1f
             val w = Math.min(px2, right) - Math.max(px1, left)
 
-            drawLine(canvas, px1, t, px1, b, Color.dilute(color, w))
-            if (ht != 0f) drawPoint(canvas, px1, tt, Color.dilute(color, w * ht))
-            if (hb != 0f) drawPoint(canvas, px1, bb, Color.dilute(color, w * hb))
+            drawLine(canvas, px1, t, px1, b, color.mix(w))
+            if (ht != 0f) drawPoint(canvas, px1, tt, color.mix(w * ht))
+            if (hb != 0f) drawPoint(canvas, px1, bb, color.mix(w * hb))
 
             px1 = px2
         }
