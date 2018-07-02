@@ -80,50 +80,50 @@ class DebugDocumentView(context: Context,
 
         this.bigPoint = true
 
-        val bs = BlockStyle.default()
-//        bs.setBorder(Border(2.5f, Color.argb(255, 255, 255, 255)),
+        val blockStyle = BlockStyle.default()
+//        blockStyle.setBorder(Border(2.5f, Color.argb(255, 255, 255, 255)),
 //                Border(3.5f, Color.argb(0, 0, 0, 0)))
-//        bs.setBorder(Border(2.5f, Color.argb(255, 255, 128, 0)),
+//        blockStyle.setBorder(Border(2.5f, Color.argb(255, 255, 128, 0)),
 //                Border(3.5f, Color.argb(255, 0, 255, 128)))
-        bs.setBorder(Border(2.5f, Color.argb(255, 255, 0, 0)),
+        blockStyle.setBorder(Border(2.5f, Color.argb(255, 255, 0, 0)),
                 Border(3.5f, Color.argb(255, 0, 0, 255)))
 
-        val leftBorder = bs.border.left
-        drawBorder(canvas, bs, 6f, 8f, 11f, 15f)
-        drawBorder(canvas, bs, 24.5f, 8.5f, 29.5f, 15.5f)
-        bs.border.left = null
-        drawBorder(canvas, bs, 42.5f, 8.5f, 47.5f, 15.5f)
-        bs.border.right = null
-        drawBorder(canvas, bs, 60.5f, 8.5f, 65.5f, 15.5f)
-        bs.setBorder(null, leftBorder)
-        drawBorder(canvas, bs, 78.5f, 8.5f, 83.5f, 15.5f)
+        val leftBorder = blockStyle.border.left
+        drawBorder(canvas, blockStyle, 6f, 8f, 11f, 15f)
+        drawBorder(canvas, blockStyle, 24.5f, 8.5f, 29.5f, 15.5f)
+        blockStyle.border.left = null
+        drawBorder(canvas, blockStyle, 42.5f, 8.5f, 47.5f, 15.5f)
+        blockStyle.border.right = null
+        drawBorder(canvas, blockStyle, 60.5f, 8.5f, 65.5f, 15.5f)
+        blockStyle.setBorder(null, leftBorder)
+        drawBorder(canvas, blockStyle, 78.5f, 8.5f, 83.5f, 15.5f)
 
         this.bigPoint = false
     }
 
     private fun drawTimeElapsed(canvas: Canvas, timeMillisElapsed: Long, x: Float, y: Float) {
-        drawText(canvas, String.format("%.3f", timeMillisElapsed / 1000f),
-                x, y, false, this.debugPaint)
+        drawText(canvas, String.format("%.3f", timeMillisElapsed / 1000f), x, y,
+                false, this.debugPaint)
     }
 
     override fun drawSection(canvas: Canvas?,
                              section: Section,
-                             parentPs: ParagraphStyle,
-                             parentCs: CharacterStyle,
+                             parentParagraphStyle: ParagraphStyle,
+                             parentCharacterStyle: CharacterStyle,
                              clipTop: Float,
                              clipLeft: Float,
                              clipRight: Float): Float {
 
         val t = System.currentTimeMillis()
 
-        val bs = section.bs
-        val bottom = super.drawSection(canvas, section, parentPs, parentCs, clipTop, clipLeft,
-                clipRight)
+        val blockStyle = section.blockStyle
+        val bottom = super.drawSection(canvas, section, parentParagraphStyle,
+                parentCharacterStyle, clipTop, clipLeft, clipRight)
 
         if (canvas != null) {
             drawTimeElapsed(canvas, System.currentTimeMillis() - t,
-                    clipLeft + (bs.margin.left + bs.borderLeftWidth) * this.density,
-                    bottom)
+                    clipLeft + (blockStyle.margin.left +
+                                blockStyle.borderLeftWidth) * this.density, bottom)
         }
 
         return bottom
@@ -132,23 +132,22 @@ class DebugDocumentView(context: Context,
     // Отрисовка абзаца
     override fun drawParagraph(canvas: Canvas?,
                                paragraph: Paragraph,
-                               parentPs: ParagraphStyle,
-                               parentCs: CharacterStyle,
+                               parentParagraphStyle: ParagraphStyle,
+                               parentCharacterStyle: CharacterStyle,
                                clipTop: Float,
                                clipLeft: Float,
                                clipRight: Float): Float {
 
         val t = System.currentTimeMillis()
 
-        val bs = paragraph.bs
-        val bottom =
-                super.drawParagraph(canvas, paragraph, parentPs, parentCs, clipTop, clipLeft,
-                        clipRight)
+        val blockStyle = paragraph.blockStyle
+        val bottom = super.drawParagraph(canvas, paragraph, parentParagraphStyle,
+                parentCharacterStyle, clipTop, clipLeft, clipRight)
 
         if (canvas != null) {
             drawTimeElapsed(canvas, System.currentTimeMillis() - t,
-                    clipLeft + (bs.margin.left + bs.borderLeftWidth) * this.density,
-                    bottom)
+                    clipLeft + (blockStyle.margin.left +
+                                blockStyle.borderLeftWidth) * this.density, bottom)
         }
 
         return bottom
