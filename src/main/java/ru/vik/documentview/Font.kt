@@ -4,6 +4,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 
 class Font(val typeface: Typeface,
+           val hyphen: Char = '-',
            val scale: Float = 1.0f,
            private val ascentRatio: Float? = null,
            private val descentRatio: Float? = null) {
@@ -15,6 +16,6 @@ class Font(val typeface: Typeface,
     }
 
     fun clone(typeface: Typeface): Font {
-        return Font(typeface, this.scale, this.ascentRatio, this.descentRatio)
+        return Font(typeface, this.hyphen, this.scale, this.ascentRatio, this.descentRatio)
     }
 }
