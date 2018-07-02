@@ -163,14 +163,11 @@ open class DocumentView(context: Context,
         val bs = paragraph.bs
 
         // Границы абзаца (нижней границы нет, мы её вычисляем)
-        val top = clipTop + (bs.margin.top +
-                             bs.borderTopWidth +
+        val top = clipTop + (bs.margin.top + bs.borderTopWidth +
                              bs.padding.top) * this.density
-        val left = clipLeft + (bs.margin.left +
-                               bs.borderLeftWidth +
+        val left = clipLeft + (bs.margin.left + bs.borderLeftWidth +
                                bs.padding.left) * this.density
-        val right = clipRight - (bs.margin.right +
-                                 bs.borderRightWidth +
+        val right = clipRight - (bs.margin.right + bs.borderRightWidth +
                                  bs.padding.right) * this.density
         var bottom = top
 
@@ -427,7 +424,8 @@ open class DocumentView(context: Context,
                                      this.pieces[lastPieceIndex].hyphenWidth != 0f
 
                     drawText(canvas, paragraph.text, piece.start, piece.end,
-                            x, piece.baseline, withHyphen, this.textPaint)
+                            x, piece.baseline + piece.cs.baselineShift.toPixels() * this.density,
+                            withHyphen, this.textPaint)
 
                     x += piece.textWidth
                 }
@@ -484,7 +482,6 @@ open class DocumentView(context: Context,
         val fontSize = getFontSize(cs, font.scale)
         textPaint.textSize = fontSize
         textPaint.textScaleX = cs.scaleX
-//        cs.baselineShift?.also { textPaint.baselineShift = it.toPx(fontSize).posRoundToInt() }
         cs.color?.also { textPaint.color = it }
 //        cs.letterSpacing?.also { textPaint.letterSpacing = it }
         cs.strike?.also { textPaint.isStrikeThruText = it }
@@ -575,28 +572,18 @@ open class DocumentView(context: Context,
     }
 
     private fun getFontSize(cs: CharacterStyle, scale: Float): Float {
-        return (cs.size ?: 1f) * cs.scale * scale * this.scaledDensity
+        return (if (cs.size.isAbsolute()) cs.size.size else 1f) * scale * this.scaledDensity
     }
 
-    internal fun drawText(canvas: Canvas,
-                          text: CharSequence,
-                          x: Float,
-                          y: Float,
-                          withHyphen: Boolean,
-                          paint: Paint,
+    internal fun drawText(canvas: Canvas, text: CharSequence,
+                          x: Float, y: Float, withHyphen: Boolean, paint: Paint,
                           drawBaseline: Boolean = false): Float {
 
         return drawText(canvas, text, 0, text.length, x, y, withHyphen, paint, drawBaseline)
     }
 
-    private fun drawText(canvas: Canvas,
-                         text: CharSequence,
-                         start: Int,
-                         end: Int,
-                         x: Float,
-                         y: Float,
-                         withHyphen: Boolean,
-                         paint: Paint,
+    private fun drawText(canvas: Canvas, text: CharSequence, start: Int, end: Int,
+                         x: Float, y: Float, withHyphen: Boolean, paint: Paint,
                          drawBaseline: Boolean = false): Float {
 
         val width = paint.measureText(text, start, end)
