@@ -25,6 +25,10 @@ open class DocumentView(context: Context,
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
 
+    enum class Baseline { NONE, INDENT, FULL }
+
+    enum class GetFontType { BY_FULL_NAME, BY_NAME, DEFAULT }
+
 //    private val log = Logger.getLogger("DocumentView")!!
 
     var document = Document()
@@ -35,10 +39,6 @@ open class DocumentView(context: Context,
 
     internal val density = this.context.resources.displayMetrics.density
     internal val scaledDensity = this.context.resources.displayMetrics.scaledDensity
-
-    enum class Baseline {
-        NONE, INDENT, FULL
-    }
 
     var baselineMode = Baseline.NONE
     var baselineColor = Color.rgb(255, 0, 0)
@@ -169,18 +169,25 @@ open class DocumentView(context: Context,
                                           blockStyle.borderRightWidth +
                                           blockStyle.padding.right) * this.density
         var paragraphBottom = paragraphTop
-//        var paragraphWidth = paragraphRight - paragraphLeft
 
         if (paragraph.text.isNotEmpty() || this.drawEmptyParagraph) {
+            val (paragraphFont, _) = getFont(characterStyle)
+            val fontSize = getFontSize(characterStyle, paragraphFont.scale)
+            val paragraphWidth = paragraphRight - paragraphLeft
 
             // Вычисляем размеры абзаца, разбиваем абзац на строки
 
             val parser = StringParser(paragraph.text)
-            val firstLeftIndent = (paragraphStyle.firstLeftIndent ?: 0f) * this.density
-            val firstRightIndent = (paragraphStyle.firstRightIndent ?: 0f) * this.density
-            val leftIndent = (paragraphStyle.leftIndent ?: 0f) * this.density
-            val rightIndent = (paragraphStyle.rightIndent ?: 0f) * this.density
-            val paragraphWidth = paragraphRight - paragraphLeft - leftIndent - rightIndent
+            val leftIndent = paragraphStyle.leftIndent?.toPixels(
+                    this.density, fontSize, paragraphWidth) ?: 0f
+            val rightIndent = paragraphStyle.rightIndent?.toPixels(
+                    this.density, fontSize, paragraphWidth) ?: 0f
+            val firstLeftIndent = paragraphStyle.firstLeftIndent?.toPixels(
+                    this.density, fontSize, paragraphWidth) ?: 0f
+            val firstRightIndent = paragraphStyle.firstRightIndent?.toPixels(
+                    this.density, fontSize, paragraphWidth) ?: 0f
+            val lineWidth = paragraphWidth - leftIndent - rightIndent
+
             var width = 0f
             var baseline: Float
             var isFirst = true
@@ -223,7 +230,7 @@ open class DocumentView(context: Context,
                     }
 
                     val baselineShift =
-                            spanCharacterStyle.baselineShift.getPixelsOrZero() * this.density
+                            spanCharacterStyle.baselineShift.getDpOrZero() * this.density
 
                     val piece = Piece(
                             isFirst = isFirst,
@@ -249,10 +256,10 @@ open class DocumentView(context: Context,
                     while (!parsed) {
                         // Собираем участки в строку и смотрим, не вышли ли мы за её пределы
 
-                        val lineWidth = paragraphWidth -
-                                        if (isFirstLine) firstLeftIndent + firstRightIndent
-                                        else 0f
-                        val out = lineWidth < width + piece.spacesWidth + piece.textWidth
+                        val curLineWidth = lineWidth -
+                                           if (isFirstLine) firstLeftIndent + firstRightIndent
+                                           else 0f
+                        val out = curLineWidth < width + piece.spacesWidth + piece.textWidth
 
                         if (!out) {
                             // Если за пределы не вышли, то просто добавляем участок в список
@@ -281,7 +288,7 @@ open class DocumentView(context: Context,
                                                         this.pieces[i].textWidth
                                             }
 
-                                            if (lineWidth >= w) break
+                                            if (curLineWidth >= w) break
                                         }
 
                                         if (this.pieces[last--].spaces != 0) break
@@ -337,7 +344,8 @@ open class DocumentView(context: Context,
 
             // Отрисовка
             if (canvas != null) {
-                drawBorder(canvas, blockStyle, paragraphTop, paragraphLeft, paragraphBottom, paragraphRight)
+                drawBorder(canvas, blockStyle, paragraphTop, paragraphLeft, paragraphBottom,
+                        paragraphRight)
 
                 isFirstLine = true
                 var leftOfLine: Float
@@ -380,7 +388,7 @@ open class DocumentView(context: Context,
                             }
                         }
 
-                        val lineWidth = rightOfLine - leftOfLine
+                        val curLineWidth = rightOfLine - leftOfLine
                         x = leftOfLine
 
                         for (j in i until this.pieces.size) {
@@ -397,7 +405,7 @@ open class DocumentView(context: Context,
                                 spacesWidth += p.spacesWidth
                             }
 
-                            val diff = lineWidth - width
+                            val diff = curLineWidth - width
                             when (align) {
                                 ParagraphStyle.Align.RIGHT  -> x += diff
                                 ParagraphStyle.Align.CENTER -> x += diff / 2f
@@ -413,7 +421,8 @@ open class DocumentView(context: Context,
                         if (this.baselineMode != Baseline.NONE) {
                             this.paint.color = this.baselineColor
                             if (this.baselineMode == Baseline.FULL) {
-                                canvas.drawLine(paragraphLeft, piece.baseline, paragraphRight, piece.baseline,
+                                canvas.drawLine(paragraphLeft, piece.baseline, paragraphRight,
+                                        piece.baseline,
                                         this.paint)
                             } else if (this.baselineMode == Baseline.INDENT) {
                                 canvas.drawLine(leftOfLine, piece.baseline, rightOfLine,
@@ -429,7 +438,7 @@ open class DocumentView(context: Context,
 
                     drawText(canvas, paragraph.text, piece.start, piece.end,
                             x, piece.baseline +
-                            piece.characterStyle.baselineShift.getPixelsOrZero() * this.density,
+                               piece.characterStyle.baselineShift.getDpOrZero() * this.density,
                             withHyphen, this.textPaint)
 
                     x += piece.textWidth
@@ -468,17 +477,11 @@ open class DocumentView(context: Context,
         textPaint.reset()
         textPaint.isAntiAlias = true
 
-        var fontName = characterStyle.font
-        if (characterStyle.bold == true) {
-            fontName += if (characterStyle.italic == true) ":bold_italic" else ":bold"
-        } else if (characterStyle.italic == true) {
-            fontName += ":italic"
-        }
+        val (font, getFontType) = getFont(characterStyle)
 
-        val font = this.fontList?.get(fontName) ?: let {
+        if (getFontType == GetFontType.BY_NAME) {
             characterStyle.bold?.also { textPaint.isFakeBoldText = it }
             characterStyle.italic?.also { textPaint.textSkewX = if (it) -0.25f else 0f }
-            getFont(characterStyle.font)
         }
 
         textPaint.typeface = font.typeface
@@ -565,8 +568,33 @@ open class DocumentView(context: Context,
         }
     }
 
-    private fun getFont(name: String?): Font {
-        return name?.let { this.fontList?.get(name) } ?: Font(Typeface.DEFAULT)
+    private fun getFontFullName(characterStyle: CharacterStyle): String {
+        var fontName = characterStyle.font ?: ""
+        if (characterStyle.bold == true) {
+            fontName += if (characterStyle.italic == true) ":bold_italic" else ":bold"
+        } else if (characterStyle.italic == true) {
+            fontName += ":italic"
+        }
+
+        return fontName
+    }
+
+    private fun getFont(characterStyle: CharacterStyle): Pair<Font, GetFontType> {
+        var getFontType = GetFontType.BY_FULL_NAME
+        var font = this.fontList?.get(getFontFullName(characterStyle))
+
+        if (font == null) {
+            getFontType = GetFontType.BY_NAME
+            font = characterStyle.font?.let { this.fontList?.get(it) }
+
+            if (font == null) {
+                getFontType = GetFontType.DEFAULT
+                font = Font(Typeface.DEFAULT)
+            }
+        }
+
+
+        return Pair(font, getFontType)
     }
 
     private fun getFontSize(characterStyle: CharacterStyle, scale: Float): Float {
