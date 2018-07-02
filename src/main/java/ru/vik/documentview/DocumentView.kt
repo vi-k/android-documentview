@@ -7,7 +7,6 @@ import android.os.Build
 import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
-import java.util.logging.Logger
 
 import ru.vik.utils.parser.StringParser
 import ru.vik.utils.color.mix
@@ -26,7 +25,7 @@ open class DocumentView(context: Context,
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
 
-    private val log = Logger.getLogger("DocumentView")!!
+//    private val log = Logger.getLogger("DocumentView")!!
 
     var document = Document()
     var fontList: FontList? = null
@@ -221,14 +220,16 @@ open class DocumentView(context: Context,
                         inParser.next()
                     }
 
+                    val baselineShift = spanCs.baselineShift.toPixels() * this.density
+
                     val piece = Piece(
                             isFirst = isFirst,
                             spaces = spaces,
                             start = inParser.start,
                             end = inParser.pos,
                             cs = spanCs,
-                            ascent = fontMetrics.ascent,
-                            descent = fontMetrics.descent + fontMetrics.leading,
+                            ascent = fontMetrics.ascent + baselineShift,
+                            descent = fontMetrics.descent + fontMetrics.leading + baselineShift,
                             spacesWidth =
                             if (isFirst) 0f
                             else this.textPaint.measureText(paragraph.text,
@@ -399,9 +400,9 @@ open class DocumentView(context: Context,
                                 ParagraphStyle.Align.CENTER -> x += diff / 2f
                                 else                        -> {
                                     spaceK = 1f + diff / spacesWidth
-                                    log.info(String.format(
-                                            "diff: %f  spacesWidth: %f  spaceK: %f",
-                                            diff, spacesWidth, spaceK))
+//                                    log.info(String.format(
+//                                            "diff: %f  spacesWidth: %f  spaceK: %f",
+//                                            diff, spacesWidth, spaceK))
                                 }
                             }
                         }
@@ -461,7 +462,6 @@ open class DocumentView(context: Context,
     }
 
     private fun csToTextPaint(cs: CharacterStyle, textPaint: TextPaint): Paint.FontMetrics {
-
         textPaint.reset()
         textPaint.isAntiAlias = true
 
@@ -479,8 +479,7 @@ open class DocumentView(context: Context,
         }
 
         textPaint.typeface = font.typeface
-        val fontSize = getFontSize(cs, font.scale)
-        textPaint.textSize = fontSize
+        textPaint.textSize = getFontSize(cs, font.scale)
         textPaint.textScaleX = cs.scaleX
         cs.color?.also { textPaint.color = it }
 //        cs.letterSpacing?.also { textPaint.letterSpacing = it }
