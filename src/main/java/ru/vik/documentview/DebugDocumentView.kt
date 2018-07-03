@@ -8,12 +8,7 @@ import android.text.TextPaint
 import android.util.AttributeSet
 
 import ru.vik.utils.color.Color
-import ru.vik.utils.document.BlockStyle
-import ru.vik.utils.document.Border
-import ru.vik.utils.document.CharacterStyle
-import ru.vik.utils.document.Paragraph
-import ru.vik.utils.document.ParagraphStyle
-import ru.vik.utils.document.Section
+import ru.vik.utils.document.*
 
 class DebugDocumentView(context: Context,
                         attrs: AttributeSet?,
@@ -31,7 +26,7 @@ class DebugDocumentView(context: Context,
         this.debugPaint.isAntiAlias = true
         this.debugPaint.color = Color.rgb(255, 0, 0)
         this.debugPaint.isFakeBoldText = true
-        this.debugPaint.textSize = 10f * this.scaledDensity
+        this.debugPaint.textSize = 8f * this.scaledDensity
     }
 
     override fun drawPoint(canvas: Canvas, x: Float, y: Float, color: Int) {
@@ -85,18 +80,18 @@ class DebugDocumentView(context: Context,
 //                Border(3.5f, Color.argb(0, 0, 0, 0)))
 //        blockStyle.setBorder(Border(2.5f, Color.argb(255, 255, 128, 0)),
 //                Border(3.5f, Color.argb(255, 0, 255, 128)))
-        blockStyle.setBorder(Border(2.5f, Color.argb(255, 255, 0, 0)),
-                Border(3.5f, Color.argb(255, 0, 0, 255)))
+        blockStyle.setBorder(Border.dp(2.5f, Color.argb(255, 255, 0, 0)),
+                Border.dp(3.5f, Color.argb(255, 0, 0, 255)))
 
-        val leftBorder = blockStyle.border.left
-        drawBorder(canvas, blockStyle, 6f, 8f, 11f, 15f)
-        drawBorder(canvas, blockStyle, 24.5f, 8.5f, 29.5f, 15.5f)
-        blockStyle.border.left = null
-        drawBorder(canvas, blockStyle, 42.5f, 8.5f, 47.5f, 15.5f)
-        blockStyle.border.right = null
-        drawBorder(canvas, blockStyle, 60.5f, 8.5f, 65.5f, 15.5f)
+        val leftBorder = blockStyle.borderLeft
+        drawBorder(canvas, blockStyle, 6f, 8f, 11f, 15f, 0f, 0f)
+        drawBorder(canvas, blockStyle, 24.5f, 8.5f, 29.5f, 15.5f, 0f, 0f)
+        blockStyle.borderLeft = null
+        drawBorder(canvas, blockStyle, 42.5f, 8.5f, 47.5f, 15.5f, 0f, 0f)
+        blockStyle.borderRight = null
+        drawBorder(canvas, blockStyle, 60.5f, 8.5f, 65.5f, 15.5f, 0f, 0f)
         blockStyle.setBorder(null, leftBorder)
-        drawBorder(canvas, blockStyle, 78.5f, 8.5f, 83.5f, 15.5f)
+        drawBorder(canvas, blockStyle, 78.5f, 8.5f, 83.5f, 15.5f, 0f, 0f)
 
         this.bigPoint = false
     }
@@ -116,14 +111,27 @@ class DebugDocumentView(context: Context,
 
         val t = System.currentTimeMillis()
 
+        val characterStyle =
+                parentCharacterStyle.clone().attach(section.characterStyle)
         val blockStyle = section.blockStyle
+
         val bottom = super.drawSection(canvas, section, parentParagraphStyle,
                 parentCharacterStyle, clipTop, clipLeft, clipRight)
 
         if (canvas != null) {
+            // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
+            // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
+            val (sectionFont, _) = getFont(characterStyle)
+            val fontSize = getFontSize(characterStyle, sectionFont.scale)
+            val parentWidth = clipRight - clipLeft
+
             drawTimeElapsed(canvas, System.currentTimeMillis() - t,
-                    clipLeft + (blockStyle.margin.left +
-                                blockStyle.borderLeftWidth) * this.density, bottom)
+                    clipLeft +
+                    Size.toPixels(blockStyle.marginLeft, this.density, fontSize, parentWidth) +
+                    Size.toPixels(blockStyle.borderLeft, this.density, fontSize),
+                    bottom -
+                    Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth) -
+                    Size.toPixels(blockStyle.borderBottom, this.density, fontSize))
         }
 
         return bottom
@@ -140,14 +148,27 @@ class DebugDocumentView(context: Context,
 
         val t = System.currentTimeMillis()
 
+        val characterStyle =
+                parentCharacterStyle.clone().attach(paragraph.characterStyle)
         val blockStyle = paragraph.blockStyle
+
         val bottom = super.drawParagraph(canvas, paragraph, parentParagraphStyle,
                 parentCharacterStyle, clipTop, clipLeft, clipRight)
 
         if (canvas != null) {
+            // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
+            // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
+            val (sectionFont, _) = getFont(characterStyle)
+            val fontSize = getFontSize(characterStyle, sectionFont.scale)
+            val parentWidth = clipRight - clipLeft
+
             drawTimeElapsed(canvas, System.currentTimeMillis() - t,
-                    clipLeft + (blockStyle.margin.left +
-                                blockStyle.borderLeftWidth) * this.density, bottom)
+                    clipLeft +
+                    Size.toPixels(blockStyle.marginLeft, this.density, fontSize, parentWidth) +
+                    Size.toPixels(blockStyle.borderLeft, this.density, fontSize, parentWidth),
+                    bottom -
+                    Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth) -
+                    Size.toPixels(blockStyle.borderBottom, this.density, fontSize))
         }
 
         return bottom

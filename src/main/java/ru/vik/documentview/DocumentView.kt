@@ -10,12 +10,10 @@ import android.view.View
 
 import ru.vik.utils.parser.StringParser
 import ru.vik.utils.color.mix
-import ru.vik.utils.document.BlockStyle
-import ru.vik.utils.document.CharacterStyle
-import ru.vik.utils.document.Document
-import ru.vik.utils.document.Paragraph
-import ru.vik.utils.document.ParagraphStyle
-import ru.vik.utils.document.Section
+import ru.vik.utils.document.*
+import java.util.logging.Logger
+import kotlin.math.ceil
+import kotlin.math.floor
 
 open class DocumentView(context: Context,
                         attrs: AttributeSet?,
@@ -29,7 +27,7 @@ open class DocumentView(context: Context,
 
     enum class GetFontType { BY_FULL_NAME, BY_NAME, DEFAULT }
 
-//    private val log = Logger.getLogger("DocumentView")!!
+    private val log = Logger.getLogger("DocumentView")!!
 
     var document = Document()
     var fontList: FontList? = null
@@ -91,6 +89,29 @@ open class DocumentView(context: Context,
         } ?: 0f
     }
 
+    /**
+     * Вычисление внутренних границ секций и параграфов
+     */
+    private fun getInnerBoundary(clipTop: Float, clipLeft: Float, clipRight: Float,
+                                 blockStyle: BlockStyle, fontSize: Float, parentWidth: Float)
+            : Triple<Float, Float, Float> {
+
+        val top = clipTop +
+                  Size.toPixels(blockStyle.marginTop, this.density, fontSize, parentWidth) +
+                  Size.toPixels(blockStyle.borderTop, this.density, fontSize) +
+                  Size.toPixels(blockStyle.paddingTop, this.density, fontSize, parentWidth)
+        val left = clipLeft +
+                   Size.toPixels(blockStyle.marginLeft, this.density, fontSize, parentWidth) +
+                   Size.toPixels(blockStyle.borderLeft, this.density, fontSize) +
+                   Size.toPixels(blockStyle.paddingLeft, this.density, fontSize, parentWidth)
+        val right = clipRight -
+                    Size.toPixels(blockStyle.marginRight, this.density, fontSize, parentWidth) -
+                    Size.toPixels(blockStyle.borderRight, this.density, fontSize) -
+                    Size.toPixels(blockStyle.paddingRight, this.density, fontSize, parentWidth)
+
+        return Triple(top, left, right)
+    }
+
     open fun drawSection(canvas: Canvas?, section: Section,
                          parentParagraphStyle: ParagraphStyle,
                          parentCharacterStyle: CharacterStyle,
@@ -100,52 +121,62 @@ open class DocumentView(context: Context,
                 parentParagraphStyle.clone().attach(section.paragraphStyle)
         val characterStyle =
                 parentCharacterStyle.clone().attach(section.characterStyle)
-        val blockStyle =
-                section.blockStyle
+        val blockStyle = section.blockStyle
 
-        val top = clipTop + (blockStyle.margin.top + blockStyle.borderTopWidth +
-                             blockStyle.padding.top) * this.density
-        val left = clipLeft + (blockStyle.margin.left + blockStyle.borderLeftWidth +
-                               blockStyle.padding.left) * this.density
-        val right = clipRight - (blockStyle.margin.right + blockStyle.borderRightWidth +
-                                 blockStyle.padding.right) * this.density
-        var bottom = top
+        // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
+        // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
+        val (sectionFont, _) = getFont(characterStyle)
+        val fontSize = getFontSize(characterStyle, sectionFont.scale)
+        val parentWidth = clipRight - clipLeft
+
+        // Границы абзаца (нижней границы нет, мы её вычисляем)
+        val (sectionTop, sectionLeft, sectionRight) =
+                getInnerBoundary(clipTop, clipLeft, clipRight,
+                        blockStyle, fontSize, parentWidth)
+        var sectionBottom = sectionTop
 
         if (canvas == null || blockStyle.needForDraw()) {
             // Вычисление размеров, если это необходимо
 
             for (item in section.paragraphs) {
                 when (item) {
-                    is Section   -> bottom = drawSection(null, item, paragraphStyle,
-                            characterStyle, bottom, left, right)
-                    is Paragraph -> bottom = drawParagraph(null, item, paragraphStyle,
-                            characterStyle, bottom, left, right)
+                    is Section   -> sectionBottom = drawSection(null, item, paragraphStyle,
+                            characterStyle, sectionBottom, sectionLeft, sectionRight)
+                    is Paragraph -> sectionBottom = drawParagraph(null, item, paragraphStyle,
+                            characterStyle, sectionBottom, sectionLeft, sectionRight)
                 }
             }
 
-            if (canvas != null) drawBorder(canvas, blockStyle, top, left, bottom, right)
+            if (canvas != null) {
+                drawBorder(canvas, blockStyle, sectionTop, sectionLeft,
+                        sectionBottom, sectionRight, fontSize, parentWidth)
+            }
         }
 
         if (canvas != null) {
             // Отрисовка
 
-            bottom = top
+            sectionBottom = sectionTop
 
             for (item in section.paragraphs) {
                 when (item) {
-                    is Section   -> bottom = drawSection(canvas, item, paragraphStyle,
-                            characterStyle, bottom, left, right)
-                    is Paragraph -> bottom = drawParagraph(canvas, item, paragraphStyle,
-                            characterStyle, bottom, left, right)
+                    is Section   -> sectionBottom = drawSection(canvas, item, paragraphStyle,
+                            characterStyle, sectionBottom, sectionLeft, sectionRight)
+                    is Paragraph -> sectionBottom = drawParagraph(canvas, item, paragraphStyle,
+                            characterStyle, sectionBottom, sectionLeft, sectionRight)
                 }
             }
         }
 
-        return bottom + (blockStyle.padding.bottom + blockStyle.borderBottomWidth +
-                         blockStyle.margin.bottom) * this.density
+        return sectionBottom +
+               Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth) +
+               Size.toPixels(blockStyle.borderBottom, this.density, fontSize) +
+               Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth)
     }
 
-    // Отрисовка абзаца
+    /**
+     * Отрисовка абзаца.
+     */
     open fun drawParagraph(canvas: Canvas?, paragraph: Paragraph,
                            parentParagraphStyle: ParagraphStyle,
                            parentCharacterStyle: CharacterStyle,
@@ -155,38 +186,44 @@ open class DocumentView(context: Context,
                 parentParagraphStyle.clone().attach(paragraph.paragraphStyle)
         val characterStyle =
                 parentCharacterStyle.clone().attach(paragraph.characterStyle)
-        val blockStyle =
-                paragraph.blockStyle
+        val blockStyle = paragraph.blockStyle
+
+        // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
+        // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
+        val (paragraphFont, _) = getFont(characterStyle)
+        val fontSize = getFontSize(characterStyle, paragraphFont.scale)
+        val parentWidth = clipRight - clipLeft
 
         // Границы абзаца (нижней границы нет, мы её вычисляем)
-        val paragraphTop = clipTop + (blockStyle.margin.top +
-                                      blockStyle.borderTopWidth +
-                                      blockStyle.padding.top) * this.density
-        val paragraphLeft = clipLeft + (blockStyle.margin.left +
-                                        blockStyle.borderLeftWidth +
-                                        blockStyle.padding.left) * this.density
-        val paragraphRight = clipRight - (blockStyle.margin.right +
-                                          blockStyle.borderRightWidth +
-                                          blockStyle.padding.right) * this.density
+        val (paragraphTop, paragraphLeft, paragraphRight) =
+                getInnerBoundary(clipTop, clipLeft, clipRight,
+                        blockStyle, fontSize, parentWidth)
         var paragraphBottom = paragraphTop
 
         if (paragraph.text.isNotEmpty() || this.drawEmptyParagraph) {
-            val (paragraphFont, _) = getFont(characterStyle)
-            val fontSize = getFontSize(characterStyle, paragraphFont.scale)
-            val paragraphWidth = paragraphRight - paragraphLeft
-
             // Вычисляем размеры абзаца, разбиваем абзац на строки
 
             val parser = StringParser(paragraph.text)
-            val leftIndent = paragraphStyle.leftIndent?.toPixels(
-                    this.density, fontSize, paragraphWidth) ?: 0f
-            val rightIndent = paragraphStyle.rightIndent?.toPixels(
-                    this.density, fontSize, paragraphWidth) ?: 0f
-            val firstLeftIndent = paragraphStyle.firstLeftIndent?.toPixels(
-                    this.density, fontSize, paragraphWidth) ?: 0f
-            val firstRightIndent = paragraphStyle.firstRightIndent?.toPixels(
-                    this.density, fontSize, paragraphWidth) ?: 0f
+
+            val leftIndent = Size.toPixels(paragraphStyle.leftIndent,
+                    this.density, fontSize, parentWidth)
+            val rightIndent = Size.toPixels(paragraphStyle.rightIndent,
+                    this.density, fontSize, parentWidth)
+            val firstLeftIndent = Size.toPixels(paragraphStyle.firstLeftIndent,
+                    this.density, fontSize, parentWidth)
+            val firstRightIndent = Size.toPixels(paragraphStyle.firstRightIndent,
+                    this.density, fontSize, parentWidth)
+
+            val paragraphWidth = paragraphRight - paragraphLeft
             val lineWidth = paragraphWidth - leftIndent - rightIndent
+
+//            this.log.warning("parentWidth=$parentWidth " +
+//                             "paragraphWidth=$paragraphWidth " +
+//                             "lineWidth=$lineWidth " +
+//                             "leftIndent=$leftIndent " +
+//                             "rightIndent=$rightIndent " +
+//                             "firstLeftIndent=$firstLeftIndent " +
+//                             "firstRightIndent=$firstRightIndent")
 
             var width = 0f
             var baseline: Float
@@ -259,6 +296,13 @@ open class DocumentView(context: Context,
                         val curLineWidth = lineWidth -
                                            if (isFirstLine) firstLeftIndent + firstRightIndent
                                            else 0f
+
+//                        this.log.warning("curLineWidth=$curLineWidth " +
+//                                         "lineWidth=$lineWidth " +
+//                                         "isFirstLine=$isFirstLine " +
+//                                         "firstLeftIndent=$firstLeftIndent " +
+//                                         "firstRightIndent=$firstRightIndent")
+
                         val out = curLineWidth < width + piece.spacesWidth + piece.textWidth
 
                         if (!out) {
@@ -344,8 +388,8 @@ open class DocumentView(context: Context,
 
             // Отрисовка
             if (canvas != null) {
-                drawBorder(canvas, blockStyle, paragraphTop, paragraphLeft, paragraphBottom,
-                        paragraphRight)
+                drawBorder(canvas, blockStyle, paragraphTop, paragraphLeft,
+                        paragraphBottom, paragraphRight, fontSize, parentWidth)
 
                 isFirstLine = true
                 var leftOfLine: Float
@@ -446,8 +490,10 @@ open class DocumentView(context: Context,
             }
         }
 
-        return paragraphBottom + (blockStyle.padding.bottom + blockStyle.borderBottomWidth +
-                                  blockStyle.margin.bottom) * this.density
+        return paragraphBottom +
+               Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth) +
+               Size.toPixels(blockStyle.borderBottom, this.density, fontSize) +
+               Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth)
     }
 
     private fun parseNextPiece(parser: StringParser, paragraph: Paragraph,
@@ -496,16 +542,25 @@ open class DocumentView(context: Context,
     }
 
     internal fun drawBorder(canvas: Canvas, blockStyle: BlockStyle,
-                            top: Float, left: Float, bottom: Float, right: Float) {
+                            top: Float, left: Float, bottom: Float, right: Float,
+                            fontSize: Float, parentWidth: Float) {
 
-        val inTop = top - blockStyle.padding.top * this.density
-        val inLeft = left - blockStyle.padding.left * this.density
-        val inBottom = bottom + blockStyle.padding.bottom * this.density
-        val inRight = right + blockStyle.padding.right * this.density
-        val outTop = inTop - blockStyle.borderTopWidth * this.density
-        val outLeft = inLeft - blockStyle.borderLeftWidth * this.density
-        val outBottom = inBottom + blockStyle.borderBottomWidth * this.density
-        val outRight = inRight + blockStyle.borderRightWidth * this.density
+        val inTop = top -
+                    Size.toPixels(blockStyle.paddingTop, this.density, fontSize, parentWidth)
+        val inLeft = left -
+                     Size.toPixels(blockStyle.paddingLeft, this.density, fontSize, parentWidth)
+        val inBottom = bottom +
+                       Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth)
+        val inRight = right +
+                      Size.toPixels(blockStyle.paddingRight, this.density, fontSize, parentWidth)
+        val outTop = inTop -
+                     Size.toPixels(blockStyle.borderTop, this.density, fontSize, parentWidth)
+        val outLeft = inLeft -
+                      Size.toPixels(blockStyle.borderLeft, this.density, fontSize, parentWidth)
+        val outBottom = inBottom +
+                        Size.toPixels(blockStyle.borderBottom, this.density, fontSize, parentWidth)
+        val outRight = inRight +
+                       Size.toPixels(blockStyle.borderRight, this.density, fontSize, parentWidth)
 
         // Фон
         if (blockStyle.color != 0) {
@@ -515,56 +570,52 @@ open class DocumentView(context: Context,
 
         var t = outTop
         var b = outBottom
-        var l = outLeft
-        var r = outRight
-
-        blockStyle.border.left?.also {
-            l = Math.ceil(inLeft.toDouble()).toFloat()
-        }
-
-        blockStyle.border.right?.also {
-            r = Math.floor(inRight.toDouble()).toFloat()
-        }
+        val l = if (Size.isEmpty(blockStyle.borderLeft)) outLeft else ceil(inLeft)
+        val r = if (Size.isEmpty(blockStyle.borderRight)) outRight else floor(inRight)
 
         // Рамка
-        blockStyle.border.top?.also { topBorder ->
-            t = Math.ceil(inTop.toDouble()).toFloat()
+        if (Size.isNotEmpty(blockStyle.borderTop)) {
+            t = ceil(inTop)
 
-            blockStyle.border.left?.also { leftBorder ->
+            if (Size.isNotEmpty(blockStyle.borderLeft)) {
                 drawBorderCorner(canvas, this.paint, outLeft, outTop, inLeft, inTop,
-                        leftBorder.color, topBorder.color)
+                        blockStyle.borderLeft!!.color, blockStyle.borderTop!!.color)
             }
 
-            blockStyle.border.right?.also { rightBorder ->
+            if (Size.isNotEmpty(blockStyle.borderRight)) {
                 drawBorderCorner(canvas, this.paint, outRight, outTop, inRight, inTop,
-                        rightBorder.color, topBorder.color)
+                        blockStyle.borderRight!!.color, blockStyle.borderTop!!.color)
             }
 
-            drawBorderHLine(canvas, this.paint, l, r, outTop, inTop, topBorder.color)
+            drawBorderHLine(canvas, this.paint, l, r, outTop, inTop,
+                    blockStyle.borderTop!!.color)
         }
 
-        blockStyle.border.bottom?.also { bottomBorder ->
-            b = Math.floor(inBottom.toDouble()).toFloat()
+        if (Size.isNotEmpty(blockStyle.borderBottom)) {
+            b = floor(inBottom)
 
-            blockStyle.border.left?.also { leftBorder ->
+            if (Size.isNotEmpty(blockStyle.borderLeft)) {
                 drawBorderCorner(canvas, this.paint, outLeft, outBottom, inLeft, inBottom,
-                        leftBorder.color, bottomBorder.color)
+                        blockStyle.borderRight!!.color, blockStyle.borderBottom!!.color)
             }
 
-            blockStyle.border.right?.also { rightBorder ->
+            if (Size.isNotEmpty(blockStyle.borderRight)) {
                 drawBorderCorner(canvas, this.paint, outRight, outBottom, inRight, inBottom,
-                        rightBorder.color, bottomBorder.color)
+                        blockStyle.borderRight!!.color, blockStyle.borderBottom!!.color)
             }
 
-            drawBorderHLine(canvas, this.paint, l, r, inBottom, outBottom, bottomBorder.color)
+            drawBorderHLine(canvas, this.paint, l, r, inBottom, outBottom,
+                    blockStyle.borderBottom!!.color)
         }
 
-        blockStyle.border.left?.also {
-            drawBorderVLine(canvas, this.paint, t, b, outLeft, inLeft, it.color)
+        if (Size.isNotEmpty(blockStyle.borderLeft)) {
+            drawBorderVLine(canvas, this.paint, t, b, outLeft, inLeft,
+                    blockStyle.borderLeft!!.color)
         }
 
-        blockStyle.border.right?.also {
-            drawBorderVLine(canvas, this.paint, t, b, inRight, outRight, it.color)
+        if (Size.isNotEmpty(blockStyle.borderRight)) {
+            drawBorderVLine(canvas, this.paint, t, b, inRight, outRight,
+                    blockStyle.borderRight!!.color)
         }
     }
 
@@ -579,7 +630,7 @@ open class DocumentView(context: Context,
         return fontName
     }
 
-    private fun getFont(characterStyle: CharacterStyle): Pair<Font, GetFontType> {
+    internal fun getFont(characterStyle: CharacterStyle): Pair<Font, GetFontType> {
         var getFontType = GetFontType.BY_FULL_NAME
         var font = this.fontList?.get(getFontFullName(characterStyle))
 
@@ -597,7 +648,7 @@ open class DocumentView(context: Context,
         return Pair(font, getFontType)
     }
 
-    private fun getFontSize(characterStyle: CharacterStyle, scale: Float): Float {
+    internal fun getFontSize(characterStyle: CharacterStyle, scale: Float): Float {
         return (if (characterStyle.size.isAbsolute()) characterStyle.size.size else 1f) *
                scale * this.scaledDensity
     }
