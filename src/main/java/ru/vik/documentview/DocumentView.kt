@@ -358,6 +358,12 @@ open class DocumentView(context: Context,
 
                                 if (last < first) {
                                     // TODO: Что будет, если слово не вмещается в строку?
+                                    isFirst = true
+                                    piece.isFirst = true
+                                    width += piece.spacesWidth + piece.textWidth
+                                    this.pieces.add(piece)
+                                    parsed = true
+                                    last++
                                 }
                             }
 
