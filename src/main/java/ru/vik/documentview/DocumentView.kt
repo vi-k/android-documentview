@@ -81,13 +81,9 @@ open class DocumentView(context: Context,
     }
 
     private fun drawView(canvas: Canvas?, width: Int = this.width): Float {
-        return this.document.root?.let {
-            drawSection(canvas,
-                    it, this.paragraphStyle, this.characterStyle,
-                    this.paddingTop.toFloat(),
-                    this.paddingLeft.toFloat(),
-                    (width - this.paddingRight).toFloat())
-        } ?: 0f
+        return drawSection(canvas, this.document, this.paragraphStyle, this.characterStyle,
+                this.paddingTop.toFloat(), this.paddingLeft.toFloat(),
+                (width - this.paddingRight).toFloat())
     }
 
     /**
