@@ -7,18 +7,16 @@ import android.os.Build
 import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
-
-import ru.vik.utils.parser.StringParser
-import ru.vik.utils.color.mix
-import ru.vik.utils.document.*
 import java.util.logging.Logger
 import kotlin.math.ceil
 import kotlin.math.floor
 
+import ru.vik.utils.parser.StringParser
+import ru.vik.utils.color.mix
+import ru.vik.utils.document.*
+
 open class DocumentView(context: Context,
-                        attrs: AttributeSet?,
-                        defStyleAttr: Int)
-    : View(context, attrs, defStyleAttr) {
+        attrs: AttributeSet?, defStyleAttr: Int) : View(context, attrs, defStyleAttr) {
 
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
@@ -44,17 +42,19 @@ open class DocumentView(context: Context,
     private val textPaint = TextPaint()
     internal val paint = Paint()
 
-    class Piece(var isFirst: Boolean,
-                val spaces: Int,
-                val start: Int,
-                val end: Int,
-                val characterStyle: CharacterStyle,
-                val ascent: Float,
-                val descent: Float,
-                var spacesWidth: Float,
-                val textWidth: Float,
-                val hyphenWidth: Float,
-                var baseline: Float = 0f)
+    class Piece(
+            var isFirst: Boolean,
+            val spaces: Int,
+            val start: Int,
+            val end: Int,
+            val characterStyle: CharacterStyle,
+            val ascent: Float,
+            val descent: Float,
+            var spacesWidth: Float,
+            val textWidth: Float,
+            val hyphenWidth: Float,
+            val eol: Boolean,
+            var baseline: Float = 0f)
 
     private var pieces = mutableListOf<Piece>()
 
@@ -93,29 +93,29 @@ open class DocumentView(context: Context,
      * Вычисление внутренних границ секций и параграфов
      */
     private fun getInnerBoundary(clipTop: Float, clipLeft: Float, clipRight: Float,
-                                 blockStyle: BlockStyle, fontSize: Float, parentWidth: Float)
+            blockStyle: BlockStyle, fontSize: Float, parentWidth: Float)
             : Triple<Float, Float, Float> {
 
         val top = clipTop +
-                  Size.toPixels(blockStyle.marginTop, this.density, fontSize, parentWidth) +
-                  Size.toPixels(blockStyle.borderTop, this.density, fontSize) +
-                  Size.toPixels(blockStyle.paddingTop, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.marginTop, this.density, fontSize, parentWidth) +
+                Size.toPixels(blockStyle.borderTop, this.density, fontSize) +
+                Size.toPixels(blockStyle.paddingTop, this.density, fontSize, parentWidth)
         val left = clipLeft +
-                   Size.toPixels(blockStyle.marginLeft, this.density, fontSize, parentWidth) +
-                   Size.toPixels(blockStyle.borderLeft, this.density, fontSize) +
-                   Size.toPixels(blockStyle.paddingLeft, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.marginLeft, this.density, fontSize, parentWidth) +
+                Size.toPixels(blockStyle.borderLeft, this.density, fontSize) +
+                Size.toPixels(blockStyle.paddingLeft, this.density, fontSize, parentWidth)
         val right = clipRight -
-                    Size.toPixels(blockStyle.marginRight, this.density, fontSize, parentWidth) -
-                    Size.toPixels(blockStyle.borderRight, this.density, fontSize) -
-                    Size.toPixels(blockStyle.paddingRight, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.marginRight, this.density, fontSize, parentWidth) -
+                Size.toPixels(blockStyle.borderRight, this.density, fontSize) -
+                Size.toPixels(blockStyle.paddingRight, this.density, fontSize, parentWidth)
 
         return Triple(top, left, right)
     }
 
     open fun drawSection(canvas: Canvas?, section: Section,
-                         parentParagraphStyle: ParagraphStyle,
-                         parentCharacterStyle: CharacterStyle,
-                         clipTop: Float, clipLeft: Float, clipRight: Float): Float {
+            parentParagraphStyle: ParagraphStyle,
+            parentCharacterStyle: CharacterStyle,
+            clipTop: Float, clipLeft: Float, clipRight: Float): Float {
 
         val paragraphStyle =
                 parentParagraphStyle.clone().attach(section.paragraphStyle)
@@ -140,7 +140,7 @@ open class DocumentView(context: Context,
 
             for (item in section.paragraphs) {
                 when (item) {
-                    is Section   -> sectionBottom = drawSection(null, item, paragraphStyle,
+                    is Section -> sectionBottom = drawSection(null, item, paragraphStyle,
                             characterStyle, sectionBottom, sectionLeft, sectionRight)
                     is Paragraph -> sectionBottom = drawParagraph(null, item, paragraphStyle,
                             characterStyle, sectionBottom, sectionLeft, sectionRight)
@@ -160,7 +160,7 @@ open class DocumentView(context: Context,
 
             for (item in section.paragraphs) {
                 when (item) {
-                    is Section   -> sectionBottom = drawSection(canvas, item, paragraphStyle,
+                    is Section -> sectionBottom = drawSection(canvas, item, paragraphStyle,
                             characterStyle, sectionBottom, sectionLeft, sectionRight)
                     is Paragraph -> sectionBottom = drawParagraph(canvas, item, paragraphStyle,
                             characterStyle, sectionBottom, sectionLeft, sectionRight)
@@ -169,18 +169,18 @@ open class DocumentView(context: Context,
         }
 
         return sectionBottom +
-               Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth) +
-               Size.toPixels(blockStyle.borderBottom, this.density, fontSize) +
-               Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth) +
+                Size.toPixels(blockStyle.borderBottom, this.density, fontSize) +
+                Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth)
     }
 
     /**
      * Отрисовка абзаца.
      */
     open fun drawParagraph(canvas: Canvas?, paragraph: Paragraph,
-                           parentParagraphStyle: ParagraphStyle,
-                           parentCharacterStyle: CharacterStyle,
-                           clipTop: Float, clipLeft: Float, clipRight: Float): Float {
+            parentParagraphStyle: ParagraphStyle,
+            parentCharacterStyle: CharacterStyle,
+            clipTop: Float, clipLeft: Float, clipRight: Float): Float {
 
         val paragraphStyle =
                 parentParagraphStyle.clone().attach(paragraph.paragraphStyle)
@@ -254,16 +254,30 @@ open class DocumentView(context: Context,
                         inParser.next()
                     }
 
-                    // Ищем слово (слово = не-пробелы)
+                    // Ищем участок без пробелов (прерываемся заодно на переносах строк)
                     inParser.start()
-                    while (!inParser.eof() && inParser.get() != ' ' && inParser.get() != '\u00AD') {
-                        inParser.next()
-                    }
 
                     var withHyphen = false
-                    if (!inParser.eof() && inParser.get() == '\u00AD') {
-                        withHyphen = true
+                    var withEol = false
+                    var pieceEnd = inParser.pos
+
+                    loop@ while (!inParser.eof()) {
+                        when (inParser.get()) {
+                            ' ' -> break@loop
+                            '\u00AD' -> {
+                                inParser.next()
+                                withHyphen = true
+                                break@loop
+                            }
+                            '\n' -> {
+                                inParser.next()
+                                withEol = true
+                                break@loop
+                            }
+                        }
+
                         inParser.next()
+                        pieceEnd = inParser.pos
                     }
 
                     val baselineShift =
@@ -273,19 +287,20 @@ open class DocumentView(context: Context,
                             isFirst = isFirst,
                             spaces = spaces,
                             start = inParser.start,
-                            end = inParser.pos,
+                            end = pieceEnd,
                             characterStyle = spanCharacterStyle,
                             ascent = fontMetrics.ascent + baselineShift,
                             descent = fontMetrics.descent + fontMetrics.leading + baselineShift,
-                            spacesWidth =
-                            if (isFirst) 0f
-                            else this.textPaint.measureText(paragraph.text,
-                                    inParser.start - spaces, inParser.start),
+                            spacesWidth = if (!isFirst) {
+                                this.textPaint.measureText(paragraph.text,
+                                        inParser.start - spaces, inParser.start)
+                            } else 0f,
                             textWidth = this.textPaint.measureText(paragraph.text,
-                                    inParser.start, inParser.pos),
-                            hyphenWidth =
-                            if (withHyphen) this.textPaint.measureText("-")
-                            else 0f
+                                    inParser.start, pieceEnd),
+                            hyphenWidth = if (withHyphen) {
+                                this.textPaint.measureText("-")
+                            } else 0f,
+                            eol = withEol
                     )
 
                     var parsed = false // В некоторых случаях надо будет делать два прохода
@@ -294,8 +309,8 @@ open class DocumentView(context: Context,
                         // Собираем участки в строку и смотрим, не вышли ли мы за её пределы
 
                         val curLineWidth = lineWidth -
-                                           if (isFirstLine) firstLeftIndent + firstRightIndent
-                                           else 0f
+                                if (isFirstLine) firstLeftIndent + firstRightIndent
+                                else 0f
 
 //                        this.log.warning("curLineWidth=$curLineWidth " +
 //                                         "lineWidth=$lineWidth " +
@@ -313,9 +328,11 @@ open class DocumentView(context: Context,
                             parsed = true
                         }
 
-                        if (out || piece.end == parser.end) {
-                            // При выходе за пределы строки или при окончании абзаца
-                            // завершаем последнюю строку
+                        if (out || piece.end == parser.end || piece.eol) {
+
+                            // При выходе за пределы строки, окончании абзаца
+                            // и встрече символа переноса строки завершаем последнюю строку
+
                             var last = this.pieces.lastIndex
 
                             if (out) {
@@ -360,12 +377,13 @@ open class DocumentView(context: Context,
                                 this.pieces[i].baseline = baseline
                             }
 
-                            if (out) {
-                                width = 0f
-                                isFirstLine = false
+                            width = 0f
+                            isFirstLine = false
+                            first = last + 1
 
-                                first = last + 1
-
+                            if (!out) {
+                                isFirst = true
+                            } else {
                                 var nextFirstPiece: Piece = piece
 
                                 if (first < this.pieces.size) {
@@ -407,10 +425,17 @@ open class DocumentView(context: Context,
                 }
 
                 var lastPieceIndex = 0
+                var lastCharacterStyle: CharacterStyle? = null
 
                 for (i in 0 until this.pieces.size) {
                     val piece = this.pieces[i]
-                    characterStyle2TextPaint(piece.characterStyle, this.textPaint)
+
+                    // Т.к. текст разбит на слова, то мы не часто будем встречаться со сменой
+                    // параметров шрифта. Незачем тогда и устанавливать их каждый раз заново
+                    if (piece.characterStyle !== lastCharacterStyle) {
+                        characterStyle2TextPaint(piece.characterStyle, this.textPaint)
+                    }
+                    lastCharacterStyle = piece.characterStyle
 
                     // Начало новой строки
                     if (piece.isFirst) {
@@ -451,9 +476,9 @@ open class DocumentView(context: Context,
 
                             val diff = curLineWidth - width
                             when (align) {
-                                ParagraphStyle.Align.RIGHT  -> x += diff
+                                ParagraphStyle.Align.RIGHT -> x += diff
                                 ParagraphStyle.Align.CENTER -> x += diff / 2f
-                                else                        -> {
+                                else -> {
                                     spaceK = 1f + diff / spacesWidth
 //                                    log.info(String.format(
 //                                            "diff: %f  spacesWidth: %f  spaceK: %f",
@@ -462,6 +487,7 @@ open class DocumentView(context: Context,
                             }
                         }
 
+                        // Базовые линии
                         if (this.baselineMode != Baseline.NONE) {
                             this.paint.color = this.baselineColor
                             if (this.baselineMode == Baseline.FULL) {
@@ -475,14 +501,14 @@ open class DocumentView(context: Context,
                         }
                     }
 
-                    x += piece.spacesWidth * spaceK
+                    x += piece.spacesWidth * if (spaceK.isInfinite()) 0f else spaceK
 
                     val withHyphen = i == lastPieceIndex &&
-                                     this.pieces[lastPieceIndex].hyphenWidth != 0f
+                            this.pieces[lastPieceIndex].hyphenWidth != 0f
 
                     drawText(canvas, paragraph.text, piece.start, piece.end,
                             x, piece.baseline +
-                               piece.characterStyle.baselineShift.getDpOrZero() * this.density,
+                            piece.characterStyle.baselineShift.getDpOrZero() * this.density,
                             withHyphen, this.textPaint)
 
                     x += piece.textWidth
@@ -491,13 +517,13 @@ open class DocumentView(context: Context,
         }
 
         return paragraphBottom +
-               Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth) +
-               Size.toPixels(blockStyle.borderBottom, this.density, fontSize) +
-               Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth) +
+                Size.toPixels(blockStyle.borderBottom, this.density, fontSize) +
+                Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth)
     }
 
     private fun parseNextPiece(parser: StringParser, paragraph: Paragraph,
-                               characterStyle: CharacterStyle): CharacterStyle {
+            characterStyle: CharacterStyle): CharacterStyle {
         parser.start()
 
         val start = parser.start
@@ -519,7 +545,7 @@ open class DocumentView(context: Context,
     }
 
     private fun characterStyle2TextPaint(characterStyle: CharacterStyle,
-                                         textPaint: TextPaint): Paint.FontMetrics {
+            textPaint: TextPaint): Paint.FontMetrics {
         textPaint.reset()
         textPaint.isAntiAlias = true
 
@@ -542,25 +568,25 @@ open class DocumentView(context: Context,
     }
 
     internal fun drawBorder(canvas: Canvas, blockStyle: BlockStyle,
-                            top: Float, left: Float, bottom: Float, right: Float,
-                            fontSize: Float, parentWidth: Float) {
+            top: Float, left: Float, bottom: Float, right: Float,
+            fontSize: Float, parentWidth: Float) {
 
         val inTop = top -
-                    Size.toPixels(blockStyle.paddingTop, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.paddingTop, this.density, fontSize, parentWidth)
         val inLeft = left -
-                     Size.toPixels(blockStyle.paddingLeft, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.paddingLeft, this.density, fontSize, parentWidth)
         val inBottom = bottom +
-                       Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth)
         val inRight = right +
-                      Size.toPixels(blockStyle.paddingRight, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.paddingRight, this.density, fontSize, parentWidth)
         val outTop = inTop -
-                     Size.toPixels(blockStyle.borderTop, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.borderTop, this.density, fontSize, parentWidth)
         val outLeft = inLeft -
-                      Size.toPixels(blockStyle.borderLeft, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.borderLeft, this.density, fontSize, parentWidth)
         val outBottom = inBottom +
-                        Size.toPixels(blockStyle.borderBottom, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.borderBottom, this.density, fontSize, parentWidth)
         val outRight = inRight +
-                       Size.toPixels(blockStyle.borderRight, this.density, fontSize, parentWidth)
+                Size.toPixels(blockStyle.borderRight, this.density, fontSize, parentWidth)
 
         // Фон
         if (blockStyle.color != 0) {
@@ -650,19 +676,19 @@ open class DocumentView(context: Context,
 
     internal fun getFontSize(characterStyle: CharacterStyle, scale: Float): Float {
         return (if (characterStyle.size.isAbsolute()) characterStyle.size.size else 1f) *
-               scale * this.scaledDensity
+                scale * this.scaledDensity
     }
 
     internal fun drawText(canvas: Canvas, text: CharSequence,
-                          x: Float, y: Float, withHyphen: Boolean, paint: Paint,
-                          drawBaseline: Boolean = false): Float {
+            x: Float, y: Float, withHyphen: Boolean, paint: Paint,
+            drawBaseline: Boolean = false): Float {
 
         return drawText(canvas, text, 0, text.length, x, y, withHyphen, paint, drawBaseline)
     }
 
     private fun drawText(canvas: Canvas, text: CharSequence, start: Int, end: Int,
-                         x: Float, y: Float, withHyphen: Boolean, paint: Paint,
-                         drawBaseline: Boolean = false): Float {
+            x: Float, y: Float, withHyphen: Boolean, paint: Paint,
+            drawBaseline: Boolean = false): Float {
 
         val width = paint.measureText(text, start, end)
 
@@ -672,8 +698,8 @@ open class DocumentView(context: Context,
         } else {
             val left = when (paint.textAlign) {
                 Paint.Align.CENTER -> x - width / 2
-                Paint.Align.RIGHT  -> x - width
-                else               -> x
+                Paint.Align.RIGHT -> x - width
+                else -> x
             }
 
             val right = left + width
@@ -709,7 +735,7 @@ open class DocumentView(context: Context,
         val width = when (widthMode) {
             View.MeasureSpec.EXACTLY -> widthSize
             View.MeasureSpec.AT_MOST -> Math.min(desiredWidth, widthSize)
-            else                     -> Math.max(desiredWidth, minWidth)
+            else -> Math.max(desiredWidth, minWidth)
         }
 
         val desiredHeight = (drawView(null, width) + 0.5f).toInt()
@@ -717,7 +743,7 @@ open class DocumentView(context: Context,
         val height = when (heightMode) {
             View.MeasureSpec.EXACTLY -> heightSize
             View.MeasureSpec.AT_MOST -> Math.min(desiredHeight, heightSize)
-            else                     -> Math.max(desiredHeight, minHeight)
+            else -> Math.max(desiredHeight, minHeight)
         }
 
         setMeasuredDimension(width, height)
@@ -737,9 +763,9 @@ open class DocumentView(context: Context,
      * @param horizontalColor Цвет горизонтальной линии рамки
      */
     private fun drawBorderCorner(canvas: Canvas, paint: Paint,
-                                 outX: Float, outY: Float,
-                                 inX: Float, inY: Float,
-                                 verticalColor: Int, horizontalColor: Int) {
+            outX: Float, outY: Float,
+            inX: Float, inY: Float,
+            verticalColor: Int, horizontalColor: Int) {
 
         // Для удобства расчётов будем всегда двигаться вправо и вниз,
         // переводя в нужное направление только при выводе
@@ -794,7 +820,7 @@ open class DocumentView(context: Context,
 
                 // Площадь, которую занимают в пикселе оба цвета
                 var sCom = (px2 - Math.max(px1, xStart)) *
-                           (py2 - Math.max(py1, yStart))
+                        (py2 - Math.max(py1, yStart))
                 if (px2 > xEnd && py2 > yEnd) {
                     sCom -= (px2 - xEnd) * (py2 - yEnd)
                 }
@@ -859,9 +885,9 @@ open class DocumentView(context: Context,
      * @param color Цвет линии.
      */
     private fun drawBorderHLine(canvas: Canvas, paint: Paint,
-                                left: Float, right: Float,
-                                top: Float, bottom: Float,
-                                color: Int) {
+            left: Float, right: Float,
+            top: Float, bottom: Float,
+            color: Int) {
 
         // Координаты для линии из "чистого" цвета
         val l = Math.ceil(left.toDouble()).toFloat()
@@ -916,9 +942,9 @@ open class DocumentView(context: Context,
      * @param color Цвет линии.
      */
     private fun drawBorderVLine(canvas: Canvas, paint: Paint,
-                                top: Float, bottom: Float,
-                                left: Float, right: Float,
-                                color: Int) {
+            top: Float, bottom: Float,
+            left: Float, right: Float,
+            color: Int) {
 
         // Координаты для линии из "чистого" цвета
         val t = Math.ceil(top.toDouble()).toFloat()
