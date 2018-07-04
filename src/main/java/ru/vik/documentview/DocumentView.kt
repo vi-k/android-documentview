@@ -48,6 +48,7 @@ open class DocumentView(context: Context,
             val start: Int,
             val end: Int,
             val characterStyle: CharacterStyle,
+            val font: Font,
             val ascent: Float,
             val descent: Float,
             var spacesWidth: Float,
@@ -236,9 +237,10 @@ open class DocumentView(context: Context,
             // Парсим строку абзаца
             while (!parser.eof()) {
                 // Находим в тексте очередной участок с одним стилем
-                val spanCharacterStyle =
+                val pieceCharacterStyle =
                         parseNextPiece(parser, paragraph, characterStyle)
-                val fontMetrics = characterStyle2TextPaint(spanCharacterStyle, this.textPaint)
+                val (pieceFont, pieceFontMetrics) =
+                        characterStyle2TextPaint(pieceCharacterStyle, this.textPaint)
 
                 // Внутри этого участка слова могут разделяться
                 // пробелами - разбиваем участок на слова
@@ -281,16 +283,18 @@ open class DocumentView(context: Context,
                     }
 
                     val baselineShift =
-                            spanCharacterStyle.baselineShift.getDpOrZero() * this.density
+                            pieceCharacterStyle.baselineShift.getDpOrZero() * this.density
 
                     val piece = Piece(
                             isFirst = isFirst,
                             spaces = spaces,
                             start = inParser.start,
                             end = pieceEnd,
-                            characterStyle = spanCharacterStyle,
-                            ascent = fontMetrics.ascent + baselineShift,
-                            descent = fontMetrics.descent + fontMetrics.leading + baselineShift,
+                            characterStyle = pieceCharacterStyle,
+                            font = pieceFont,
+                            ascent = pieceFontMetrics.ascent + baselineShift,
+                            descent = pieceFontMetrics.descent +
+                                    pieceFontMetrics.leading + baselineShift,
                             spacesWidth = if (!isFirst) {
                                 this.textPaint.measureText(paragraph.text,
                                         inParser.start - spaces, inParser.start)
@@ -506,12 +510,17 @@ open class DocumentView(context: Context,
                     val withHyphen = i == lastPieceIndex &&
                             this.pieces[lastPieceIndex].hyphenWidth != 0f
 
-                    drawText(canvas, paragraph.text, piece.start, piece.end,
+                    x += drawText(canvas, paragraph.text, piece.start, piece.end,
                             x, piece.baseline +
                             piece.characterStyle.baselineShift.getDpOrZero() * this.density,
-                            withHyphen, this.textPaint)
+                            this.textPaint)
 
-                    x += piece.textWidth
+                    if (withHyphen) {
+                        x += drawText(canvas, piece.font.hyphen.toString(),
+                                x, piece.baseline +
+                                piece.characterStyle.baselineShift.getDpOrZero() * this.density,
+                                this.textPaint)
+                    }
                 }
             }
         }
@@ -545,7 +554,8 @@ open class DocumentView(context: Context,
     }
 
     private fun characterStyle2TextPaint(characterStyle: CharacterStyle,
-            textPaint: TextPaint): Paint.FontMetrics {
+            textPaint: TextPaint): Pair<Font, Paint.FontMetrics> {
+
         textPaint.reset()
         textPaint.isAntiAlias = true
 
@@ -564,7 +574,7 @@ open class DocumentView(context: Context,
         characterStyle.strike?.also { textPaint.isStrikeThruText = it }
         characterStyle.underline?.also { textPaint.isUnderlineText = it }
 
-        return font.correctFontMetrics(textPaint.fontMetrics)
+        return Pair(font, font.correctFontMetrics(textPaint.fontMetrics))
     }
 
     internal fun drawBorder(canvas: Canvas, blockStyle: BlockStyle,
@@ -680,21 +690,20 @@ open class DocumentView(context: Context,
     }
 
     internal fun drawText(canvas: Canvas, text: CharSequence,
-            x: Float, y: Float, withHyphen: Boolean, paint: Paint,
+            x: Float, y: Float, paint: Paint,
             drawBaseline: Boolean = false): Float {
 
-        return drawText(canvas, text, 0, text.length, x, y, withHyphen, paint, drawBaseline)
+        return drawText(canvas, text, 0, text.length, x, y, paint, drawBaseline)
     }
 
     private fun drawText(canvas: Canvas, text: CharSequence, start: Int, end: Int,
-            x: Float, y: Float, withHyphen: Boolean, paint: Paint,
+            x: Float, y: Float, paint: Paint,
             drawBaseline: Boolean = false): Float {
 
         val width = paint.measureText(text, start, end)
 
         if (!drawBaseline) {
             canvas.drawText(text, start, end, x, y, paint)
-            if (withHyphen) canvas.drawText("-", x + width, y, paint)
         } else {
             val left = when (paint.textAlign) {
                 Paint.Align.CENTER -> x - width / 2
@@ -710,7 +719,6 @@ open class DocumentView(context: Context,
             paint.color = textColor
 
             canvas.drawText(text, start, end, x, y, paint)
-            if (withHyphen) canvas.drawText("-", x + width, y, paint)
         }
 
         return width
