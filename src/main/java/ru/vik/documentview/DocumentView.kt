@@ -42,22 +42,22 @@ open class DocumentView(context: Context,
     private val textPaint = TextPaint()
     internal val paint = Paint()
 
-    class Piece(
+    class Segment(
             var isFirst: Boolean,
             val spaces: Int,
-            val start: Int,
+            var start: Int,
             val end: Int,
             val characterStyle: CharacterStyle,
             val font: Font,
             val ascent: Float,
             val descent: Float,
             var spacesWidth: Float,
-            val textWidth: Float,
+            var textWidth: Float,
             val hyphenWidth: Float,
             val eol: Boolean,
             var baseline: Float = 0f)
 
-    private var pieces = mutableListOf<Piece>()
+    private var segments = mutableListOf<Segment>()
 
     init {
         this.paint.isAntiAlias = true
@@ -237,18 +237,17 @@ open class DocumentView(context: Context,
             var first = 0
             var isFirstLine = true
 
-            this.pieces.clear()
+            this.segments.clear()
 
             // Парсим строку абзаца
             while (!parser.eof()) {
-                // Находим в тексте очередной участок с одним стилем
-                val pieceCharacterStyle =
-                        parseNextPiece(parser, paragraph, characterStyle)
-                val (pieceFont, pieceFontMetrics) =
-                        characterStyle2TextPaint(pieceCharacterStyle, this.textPaint)
+                // Находим в тексте очередной сегмент с одним стилем
+                val segmentCharacterStyle =
+                        parseNextSegment(parser, paragraph, characterStyle)
+                val (segmentFont, segmentFontMetrics) =
+                        characterStyle2TextPaint(segmentCharacterStyle, this.textPaint)
 
-                // Внутри этого участка слова могут разделяться
-                // пробелами - разбиваем участок на слова
+                // Разбиваем этот сегмент на более мелкие сегменты по пробелам и знакам переноса
 
                 val inParser = StringParser(paragraph.text, parser.start, parser.pos)
 
@@ -261,12 +260,12 @@ open class DocumentView(context: Context,
                         inParser.next()
                     }
 
-                    // Ищем участок без пробелов (прерываемся заодно на переносах строк)
+                    // Ищем сегмент без пробелов (прерываемся заодно на переносах строк)
                     inParser.start()
 
                     var withHyphen = false
                     var withEol = false
-                    var pieceEnd = inParser.pos
+                    var segmentEnd = inParser.pos
 
                     loop@ while (!inParser.eof()) {
                         when (inParser.get()) {
@@ -284,28 +283,28 @@ open class DocumentView(context: Context,
                         }
 
                         inParser.next()
-                        pieceEnd = inParser.pos
+                        segmentEnd = inParser.pos
                     }
 
                     val baselineShift =
-                            pieceCharacterStyle.baselineShift.getDpOrZero() * this.density
+                            segmentCharacterStyle.baselineShift.getDpOrZero() * this.density
 
-                    val piece = Piece(
+                    val segment = Segment(
                             isFirst = isFirst,
                             spaces = spaces,
                             start = inParser.start,
-                            end = pieceEnd,
-                            characterStyle = pieceCharacterStyle,
-                            font = pieceFont,
-                            ascent = pieceFontMetrics.ascent + baselineShift,
-                            descent = pieceFontMetrics.descent +
-                                    pieceFontMetrics.leading + baselineShift,
+                            end = segmentEnd,
+                            characterStyle = segmentCharacterStyle,
+                            font = segmentFont,
+                            ascent = segmentFontMetrics.ascent + baselineShift,
+                            descent = segmentFontMetrics.descent +
+                                    segmentFontMetrics.leading + baselineShift,
                             spacesWidth = if (!isFirst) {
                                 this.textPaint.measureText(paragraph.text,
                                         inParser.start - spaces, inParser.start)
                             } else 0f,
                             textWidth = this.textPaint.measureText(paragraph.text,
-                                    inParser.start, pieceEnd),
+                                    inParser.start, segmentEnd),
                             hyphenWidth = if (withHyphen) {
                                 this.textPaint.measureText("-")
                             } else 0f,
@@ -315,7 +314,7 @@ open class DocumentView(context: Context,
                     var parsed = false // В некоторых случаях надо будет делать два прохода
 
                     while (!parsed) {
-                        // Собираем участки в строку и смотрим, не вышли ли мы за её пределы
+                        // Собираем сегменты в строку и смотрим, не вышли ли мы за её пределы
 
                         val curLineWidth = lineWidth -
                                 if (isFirstLine) firstLeftIndent + firstRightIndent
@@ -327,54 +326,111 @@ open class DocumentView(context: Context,
 //                                         "firstLeftIndent=$firstLeftIndent " +
 //                                         "firstRightIndent=$firstRightIndent")
 
-                        val out = curLineWidth < width + piece.spacesWidth + piece.textWidth
+                        val out = curLineWidth < width +
+                                segment.spacesWidth + segment.textWidth
 
                         if (!out) {
-                            // Если за пределы не вышли, то просто добавляем участок в список
+                            // Если за пределы не вышли, то просто добавляем сегмент в список
                             isFirst = false
-                            width += piece.spacesWidth + piece.textWidth
-                            this.pieces.add(piece)
+                            width += segment.spacesWidth + segment.textWidth
+                            this.segments.add(segment)
                             parsed = true
                         }
 
-                        if (out || piece.end == parser.end || piece.eol) {
+                        if (out || segment.end == parser.end || segment.eol) {
 
                             // При выходе за пределы строки, окончании абзаца
                             // и встрече символа переноса строки завершаем последнюю строку
 
-                            var last = this.pieces.lastIndex
+                            var last = this.segments.lastIndex
 
                             if (out) {
-                                if (piece.spaces == 0) {
-                                    // Мы не можем переносить на другую строку по границе участков,
+                                if (segment.spaces == 0) {
+                                    // Мы не можем переносить на другую строку по границе сегментов,
                                     // а только по границе слов. Учитываем это - ищем начало слова,
                                     // чтобы отделить его от текущей строки
                                     while (last >= first) {
-                                        val hyphenWidth = this.pieces[last].hyphenWidth
+                                        val hyphenWidth = this.segments[last].hyphenWidth
                                         if (hyphenWidth != 0f) {
                                             var w = hyphenWidth
                                             for (i in first..last) {
-                                                w += this.pieces[i].spacesWidth +
-                                                        this.pieces[i].textWidth
+                                                w += this.segments[i].spacesWidth +
+                                                        this.segments[i].textWidth
                                             }
 
                                             if (curLineWidth >= w) break
                                         }
 
-                                        if (this.pieces[last--].spaces != 0) break
+                                        if (this.segments[last--].spaces != 0) break
                                     }
                                 }
 
                                 if (last < first) {
-                                    // Большой участок без пробелов не вмещается в строку.
-                                    // Разбиваем, как можем
-                                    // TODO: Что будет, если слово не вмещается в строку?
-                                    isFirst = true
-                                    piece.isFirst = true
-                                    width += piece.spacesWidth + piece.textWidth
-                                    this.pieces.add(piece)
-                                    parsed = true
-                                    last++
+                                    // Если большой сегмент не вмещается в строку,
+                                    // разбиваем, как можем
+
+                                    // Расчитываем примерно, где будем делить сегмент. Исходим
+                                    // из оставшегося незаполненного пространства в строке.
+                                    // В соответствующей пропорции делим строку. Делим случайно,
+                                    // в том числе можем разделить букву и диакритический знак.
+                                    // Эту проблему решим позже
+                                    val remainWidth = curLineWidth - width
+                                    val divK = remainWidth / segment.textWidth
+                                    var divPos = segment.start +
+                                            ((segment.end - segment.start) * divK).toInt()
+
+                                    var divWidth: Float
+
+                                    // Если новый сегмент всё ещё больше оставшегося пространства,
+                                    // уменьшаем ещё
+                                    while (true) {
+                                        divWidth = this.textPaint.measureText(paragraph.text,
+                                                segment.start, divPos)
+                                        if (divWidth <= remainWidth) break
+                                        divPos--
+                                    }
+
+                                    // Хотя бы один символ, даже если и он выходит за границы,
+                                    // всё же оставляем
+                                    if (divPos == segment.start) divPos = segment.start + 1
+
+                                    // А если слишком много убрали, то добавляем. Здесь же решается
+                                    // проблема разделения между буквой и диакритическим знаком.
+                                    // Как неимеющие положительной ширины, они автоматически
+                                    // вернутся обратно
+                                    while (divPos < segment.end - 1) {
+                                        val divWidth2 = this.textPaint.measureText(
+                                                paragraph.text, segment.start, divPos + 1)
+                                        if (divWidth2 > remainWidth) break
+                                        divPos++
+                                        divWidth = divWidth2
+                                    }
+
+                                    val divSegment = Segment(
+                                            isFirst = segment.isFirst,
+                                            spaces = 0,
+                                            start = segment.start,
+                                            end = divPos,
+                                            characterStyle = segment.characterStyle,
+                                            font = segment.font,
+                                            ascent = segment.ascent,
+                                            descent = segment.descent,
+                                            spacesWidth = 0f,
+                                            textWidth = divWidth,
+                                            hyphenWidth = 0f,
+                                            eol = false
+                                    )
+
+                                    // Новый сегмент добавляем, а с оставшимся разбираемся
+                                    // следующим проходом
+                                    this.segments.add(divSegment)
+                                    last = this.segments.size - 1
+                                    width += divSegment.textWidth
+
+                                    segment.isFirst = true
+                                    segment.start = divSegment.end
+                                    segment.textWidth = this.textPaint.measureText(paragraph.text,
+                                            segment.start, segment.end)
                                 }
                             }
 
@@ -383,15 +439,15 @@ open class DocumentView(context: Context,
                             var descent = 0f
 
                             for (i in first..last) {
-                                ascent = Math.min(ascent, this.pieces[i].ascent)
-                                descent = Math.max(descent, this.pieces[i].descent)
+                                ascent = Math.min(ascent, this.segments[i].ascent)
+                                descent = Math.max(descent, this.segments[i].descent)
                             }
 
                             baseline = paragraphBottom - ascent
                             paragraphBottom = baseline + descent
 
                             for (i in first..last) {
-                                this.pieces[i].baseline = baseline
+                                this.segments[i].baseline = baseline
                             }
 
                             width = 0f
@@ -401,20 +457,20 @@ open class DocumentView(context: Context,
                             if (!out) {
                                 isFirst = true
                             } else {
-                                var nextFirstPiece: Piece = piece
+                                var nextFirstSegment: Segment = segment
 
-                                if (first < this.pieces.size) {
-                                    nextFirstPiece = this.pieces[first]
+                                if (first < this.segments.size) {
+                                    nextFirstSegment = this.segments[first]
 
                                     // Вычисляем ширину и базовую линию новой строки
-                                    // (без последнего участка!, т.к. он будет рассчитан отдельно)
-                                    for (i in first until this.pieces.size) {
-                                        width += with(this.pieces[i]) { spacesWidth + textWidth }
+                                    // (без последнего сегмента, т.к. он будет рассчитан отдельно)
+                                    for (i in first until this.segments.size) {
+                                        width += with(this.segments[i]) { spacesWidth + textWidth }
                                     }
                                 }
 
-                                nextFirstPiece.isFirst = true
-                                nextFirstPiece.spacesWidth = 0f
+                                nextFirstSegment.isFirst = true
+                                nextFirstSegment.spacesWidth = 0f
                             }
                         }
                     }
@@ -431,31 +487,31 @@ open class DocumentView(context: Context,
                 var rightOfLine: Float
                 var x = 0f
                 var spaceK = 1f
-                lateinit var lastFirstPiece: Piece
+                lateinit var lastFirstSegment: Segment
 
                 // Ищем последнюю строку
-                for (i in this.pieces.size - 1 downTo 0) {
-                    if (this.pieces[i].isFirst) {
-                        lastFirstPiece = this.pieces[i]
+                for (i in this.segments.size - 1 downTo 0) {
+                    if (this.segments[i].isFirst) {
+                        lastFirstSegment = this.segments[i]
                         break
                     }
                 }
 
-                var lastPieceIndex = 0
+                var lastSegmentIndex = 0
                 var lastCharacterStyle: CharacterStyle? = null
 
-                for (i in 0 until this.pieces.size) {
-                    val piece = this.pieces[i]
+                for (i in 0 until this.segments.size) {
+                    val segment = this.segments[i]
 
                     // Т.к. текст разбит на слова, то мы не часто будем встречаться со сменой
                     // параметров шрифта. Незачем тогда и устанавливать их каждый раз заново
-                    if (piece.characterStyle !== lastCharacterStyle) {
-                        characterStyle2TextPaint(piece.characterStyle, this.textPaint)
+                    if (segment.characterStyle !== lastCharacterStyle) {
+                        characterStyle2TextPaint(segment.characterStyle, this.textPaint)
                     }
-                    lastCharacterStyle = piece.characterStyle
+                    lastCharacterStyle = segment.characterStyle
 
                     // Начало новой строки
-                    if (piece.isFirst) {
+                    if (segment.isFirst) {
                         var align = paragraphStyle.align
                         spaceK = 1f
                         leftOfLine = paragraphLeft + leftIndent
@@ -466,7 +522,7 @@ open class DocumentView(context: Context,
                             rightOfLine -= firstRightIndent
                             paragraphStyle.firstAlign?.also { align = it }
                             isFirstLine = false
-                        } else if (piece === lastFirstPiece) {
+                        } else if (segment === lastFirstSegment) {
                             if (paragraphStyle.lastAlign != null)
                                 align = paragraphStyle.lastAlign
                             else if (align == ParagraphStyle.Align.JUSTIFY) {
@@ -477,16 +533,16 @@ open class DocumentView(context: Context,
                         val curLineWidth = rightOfLine - leftOfLine
                         x = leftOfLine
 
-                        for (j in i until this.pieces.size) {
-                            if (this.pieces[j].isFirst && this.pieces[j] !== piece) break
-                            lastPieceIndex = j
+                        for (j in i until this.segments.size) {
+                            if (this.segments[j].isFirst && this.segments[j] !== segment) break
+                            lastSegmentIndex = j
                         }
 
                         if (align != ParagraphStyle.Align.LEFT) {
-                            width = this.pieces[lastPieceIndex].hyphenWidth
+                            width = this.segments[lastSegmentIndex].hyphenWidth
                             var spacesWidth = 0f
-                            for (j in i..lastPieceIndex) {
-                                val p = this.pieces[j]
+                            for (j in i..lastSegmentIndex) {
+                                val p = this.segments[j]
                                 width += p.spacesWidth + p.textWidth
                                 spacesWidth += p.spacesWidth
                             }
@@ -508,30 +564,30 @@ open class DocumentView(context: Context,
                         if (this.baselineMode != Baseline.NONE) {
                             this.paint.color = this.baselineColor
                             if (this.baselineMode == Baseline.FULL) {
-                                canvas.drawLine(paragraphLeft, piece.baseline, paragraphRight,
-                                        piece.baseline,
+                                canvas.drawLine(paragraphLeft, segment.baseline, paragraphRight,
+                                        segment.baseline,
                                         this.paint)
                             } else if (this.baselineMode == Baseline.INDENT) {
-                                canvas.drawLine(leftOfLine, piece.baseline, rightOfLine,
-                                        piece.baseline, this.paint)
+                                canvas.drawLine(leftOfLine, segment.baseline, rightOfLine,
+                                        segment.baseline, this.paint)
                             }
                         }
                     }
 
-                    x += piece.spacesWidth * if (spaceK.isInfinite()) 0f else spaceK
+                    x += segment.spacesWidth * if (spaceK.isInfinite()) 0f else spaceK
 
-                    val withHyphen = i == lastPieceIndex &&
-                            this.pieces[lastPieceIndex].hyphenWidth != 0f
+                    val withHyphen = i == lastSegmentIndex &&
+                            this.segments[lastSegmentIndex].hyphenWidth != 0f
 
-                    x += drawText(canvas, paragraph.text, piece.start, piece.end,
-                            x, piece.baseline +
-                            piece.characterStyle.baselineShift.getDpOrZero() * this.density,
+                    x += drawText(canvas, paragraph.text, segment.start, segment.end,
+                            x, segment.baseline +
+                            segment.characterStyle.baselineShift.getDpOrZero() * this.density,
                             this.textPaint)
 
                     if (withHyphen) {
-                        x += drawText(canvas, piece.font.hyphen.toString(),
-                                x, piece.baseline +
-                                piece.characterStyle.baselineShift.getDpOrZero() * this.density,
+                        x += drawText(canvas, segment.font.hyphen.toString(),
+                                x, segment.baseline +
+                                segment.characterStyle.baselineShift.getDpOrZero() * this.density,
                                 this.textPaint)
                     }
                 }
@@ -544,7 +600,7 @@ open class DocumentView(context: Context,
                 Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth)
     }
 
-    private fun parseNextPiece(parser: StringParser, paragraph: Paragraph,
+    private fun parseNextSegment(parser: StringParser, paragraph: Paragraph,
             characterStyle: CharacterStyle): CharacterStyle {
         parser.start()
 
@@ -921,6 +977,7 @@ open class DocumentView(context: Context,
                     color = horizontalColor.mix(sCom)
                 }
 
+                // TODO: Всё рисуем по точкам, но где-то можно было бы заполнять линиями
                 drawPoint(canvas,
                         (offsetX + signX * px1).toFloat(),
                         (offsetY + signY * py1).toFloat(),
