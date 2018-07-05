@@ -23,7 +23,7 @@ open class DocumentView(context: Context,
 
     enum class Baseline { NONE, INDENT, FULL }
 
-    enum class GetFontType { BY_FULL_NAME, BY_NAME, DEFAULT }
+    enum class GetFontType { BY_FULL_NAME, BY_SHORT_NAME, DEFAULT }
 
     private val log = Logger.getLogger("DocumentView")!!
 
@@ -64,11 +64,17 @@ open class DocumentView(context: Context,
         this.paint.style = Paint.Style.FILL
     }
 
+    /**
+     * Функция рисования точки с возможностью её подмены для debug
+     */
     open fun drawPoint(canvas: Canvas, x: Float, y: Float, color: Int) {
         this.paint.color = color
         canvas.drawPoint(x, y, this.paint)
     }
 
+    /**
+     * Функция рисования линии с возможностью её подмены для debug
+     */
     open fun drawLine(canvas: Canvas, x1: Float, y1: Float, x2: Float, y2: Float, color: Int) {
         this.paint.color = color
         canvas.drawLine(x1, y1, x2, y2, this.paint)
@@ -80,6 +86,13 @@ open class DocumentView(context: Context,
         drawView(canvas)
     }
 
+    /**
+     * Рисование View или вычисление необходимой высоты (при canvas == null).
+     *
+     * @param canvas Если null, то тоько вычисление высоты.
+     * @param width В OnMeasure() ещё не установлена ширина View, поэтому будущуюю ширину
+     * необходимо задать вручную.
+     */
     private fun drawView(canvas: Canvas?, width: Int = this.width): Float {
         return drawSection(canvas, this.document, this.paragraphStyle, this.characterStyle,
                 this.paddingTop.toFloat(), this.paddingLeft.toFloat(),
@@ -87,28 +100,16 @@ open class DocumentView(context: Context,
     }
 
     /**
-     * Вычисление внутренних границ секций и параграфов
+     * Рисование секции или вычисление необходимой высоты секции (при canvas == null).
+     *
+     * @param canvas Если null, то тоько вычисление высоты.
+     * @param section Секция, которую необходимо отрисовать.
+     * @param parentParagraphStyle Стиль абзаца, переданный от родителя.
+     * @param parentCharacterStyle Стиль знаков, переданный от родителя.
+     * @param clipTop
+     * @param clipLeft
+     * @param clipRight Границы секции. Нижняя граница вычисляется.
      */
-    private fun getInnerBoundary(clipTop: Float, clipLeft: Float, clipRight: Float,
-            blockStyle: BlockStyle, fontSize: Float, parentWidth: Float)
-            : Triple<Float, Float, Float> {
-
-        val top = clipTop +
-                Size.toPixels(blockStyle.marginTop, this.density, fontSize, parentWidth) +
-                Size.toPixels(blockStyle.borderTop, this.density, fontSize) +
-                Size.toPixels(blockStyle.paddingTop, this.density, fontSize, parentWidth)
-        val left = clipLeft +
-                Size.toPixels(blockStyle.marginLeft, this.density, fontSize, parentWidth) +
-                Size.toPixels(blockStyle.borderLeft, this.density, fontSize) +
-                Size.toPixels(blockStyle.paddingLeft, this.density, fontSize, parentWidth)
-        val right = clipRight -
-                Size.toPixels(blockStyle.marginRight, this.density, fontSize, parentWidth) -
-                Size.toPixels(blockStyle.borderRight, this.density, fontSize) -
-                Size.toPixels(blockStyle.paddingRight, this.density, fontSize, parentWidth)
-
-        return Triple(top, left, right)
-    }
-
     open fun drawSection(canvas: Canvas?, section: Section,
             parentParagraphStyle: ParagraphStyle,
             parentCharacterStyle: CharacterStyle,
@@ -172,7 +173,15 @@ open class DocumentView(context: Context,
     }
 
     /**
-     * Отрисовка абзаца.
+     * Рисование абзаца или вычисление необходимой высоты абзаца (при canvas == null).
+     *
+     * @param canvas Если null, то тоько вычисление высоты.
+     * @param paragraph Абзац, который необходимо отрисовать.
+     * @param parentParagraphStyle Стиль абзаца, переданный от родителя.
+     * @param parentCharacterStyle Стиль знаков, переданный от родителя.
+     * @param clipTop
+     * @param clipLeft
+     * @param clipRight Границы секции. Нижняя граница вычисляется.
      */
     open fun drawParagraph(canvas: Canvas?, paragraph: Paragraph,
             parentParagraphStyle: ParagraphStyle,
@@ -357,6 +366,8 @@ open class DocumentView(context: Context,
                                 }
 
                                 if (last < first) {
+                                    // Большой участок без пробелов не вмещается в строку.
+                                    // Разбиваем, как можем
                                     // TODO: Что будет, если слово не вмещается в строку?
                                     isFirst = true
                                     piece.isFirst = true
@@ -555,6 +566,9 @@ open class DocumentView(context: Context,
         return spanCharacterStyle
     }
 
+    /**
+     * Установка параметров textPaint из стиля characterStyle.
+     */
     private fun characterStyle2TextPaint(characterStyle: CharacterStyle,
             textPaint: TextPaint): Pair<Font, Paint.FontMetrics> {
 
@@ -563,7 +577,7 @@ open class DocumentView(context: Context,
 
         val (font, getFontType) = getFont(characterStyle)
 
-        if (getFontType == GetFontType.BY_NAME) {
+        if (getFontType == GetFontType.BY_SHORT_NAME) {
             characterStyle.bold?.also { textPaint.isFakeBoldText = it }
             characterStyle.italic?.also { textPaint.textSkewX = if (it) -0.25f else 0f }
         }
@@ -579,6 +593,19 @@ open class DocumentView(context: Context,
         return Pair(font, font.correctFontMetrics(textPaint.fontMetrics))
     }
 
+    /**
+     * Рисование рамки с учётом разных размеров и цветов каждой из сторон.
+     *
+     * @param canvas Канвас.
+     * @param blockStyle Параметры рамки и размеры отступов.
+     * @param top
+     * @param left
+     * @param bottom
+     * @param right Положение объекта (!) на канвасе.
+     * @param fontSize
+     * @param parentWidth Размер шрифта и родителя для вычисления отступов и размеров рамки,
+     * указанных в em и ratio.
+     */
     internal fun drawBorder(canvas: Canvas, blockStyle: BlockStyle,
             top: Float, left: Float, bottom: Float, right: Float,
             fontSize: Float, parentWidth: Float) {
@@ -657,6 +684,15 @@ open class DocumentView(context: Context,
         }
     }
 
+    /**
+     * Полное название шрифта в зависимости от параметров bold и italic в characterStyle.
+     *
+     * @return
+     * 1) Если bold=false, italic=false, то "название_шрифта"
+     * 2) Если bold=true, italic=false, то "название_шрифта:bold"
+     * 3) Если bold=false, italic=true, то "название_шрифта:italic"
+     * 4) Если bold=true, italic=true, то "название_шрифта:bold_italic"
+     */
     private fun getFontFullName(characterStyle: CharacterStyle): String {
         var fontName = characterStyle.font ?: ""
         if (characterStyle.bold == true) {
@@ -668,12 +704,22 @@ open class DocumentView(context: Context,
         return fontName
     }
 
+    /**
+     * Поиск необходимого шрифта, заданного в characterStyle, в списке шрифтов.
+     *
+     * @return
+     * 1) Если шрифт найден по полному имени с учётом bold и italic, то найденный шрифт
+     * с параметром GetFontType.BY_FULL_NAME.
+     * 2) Если шрифт найден только по короткому имени, то найденный шрифт
+     * с параметром GetFontType.BY_SHORT_NAME.
+     * 3) Если шрифт не найден, то шрифт по-умолчанию с параметром GetFontType.DEFAULT.
+     */
     internal fun getFont(characterStyle: CharacterStyle): Pair<Font, GetFontType> {
         var getFontType = GetFontType.BY_FULL_NAME
         var font = this.fontList?.get(getFontFullName(characterStyle))
 
         if (font == null) {
-            getFontType = GetFontType.BY_NAME
+            getFontType = GetFontType.BY_SHORT_NAME
             font = characterStyle.font?.let { this.fontList?.get(it) }
 
             if (font == null) {
@@ -686,11 +732,18 @@ open class DocumentView(context: Context,
         return Pair(font, getFontType)
     }
 
+    /**
+     * Размер шрифта из characterStyle с учётом масштабирования. Только для размеров, уже
+     * приведённых к абсолютной величине из em и ratio.
+     */
     internal fun getFontSize(characterStyle: CharacterStyle, scale: Float): Float {
         return (if (characterStyle.size.isAbsolute()) characterStyle.size.size else 1f) *
                 scale * this.scaledDensity
     }
 
+    /**
+     * Рисование текста с возможностью рисования базовой линии.
+     */
     internal fun drawText(canvas: Canvas, text: CharSequence,
             x: Float, y: Float, paint: Paint,
             drawBaseline: Boolean = false): Float {
@@ -698,9 +751,11 @@ open class DocumentView(context: Context,
         return drawText(canvas, text, 0, text.length, x, y, paint, drawBaseline)
     }
 
-    private fun drawText(canvas: Canvas, text: CharSequence, start: Int, end: Int,
-            x: Float, y: Float, paint: Paint,
-            drawBaseline: Boolean = false): Float {
+    /**
+     * Рисование текста с возможностью рисования базовой линии.
+     */
+    internal fun drawText(canvas: Canvas, text: CharSequence, start: Int, end: Int,
+            x: Float, y: Float, paint: Paint, drawBaseline: Boolean = false): Float {
 
         val width = paint.measureText(text, start, end)
 
@@ -748,7 +803,7 @@ open class DocumentView(context: Context,
             else -> Math.max(desiredWidth, minWidth)
         }
 
-        val desiredHeight = (drawView(null, width) + 0.5f).toInt()
+        val desiredHeight = ceil(drawView(null, width)).toInt()
 
         val height = when (heightMode) {
             View.MeasureSpec.EXACTLY -> heightSize
@@ -760,17 +815,17 @@ open class DocumentView(context: Context,
     }
 
     /**
-     * Прорисовка угла рамки.
+     * Рисование угла рамки.
      *
      * Рамка вокруг текста может состоят из линий разных цветов. Собственно, эта функция
      * соединяет эти линии, смешивая цвета.
      *
      * @param outX
-     * @param outY Координаты внешнего угла рамки
+     * @param outY Координаты внешнего угла рамки.
      * @param inX
-     * @param inY Координаты внутреннего угла рамки
-     * @param verticalColor Цвет вертикальной линии рамки
-     * @param horizontalColor Цвет горизонтальной линии рамки
+     * @param inY Координаты внутреннего угла рамки.
+     * @param verticalColor Цвет вертикальной линии рамки.
+     * @param horizontalColor Цвет горизонтальной линии рамки.
      */
     private fun drawBorderCorner(canvas: Canvas, paint: Paint,
             outX: Float, outY: Float,
@@ -806,9 +861,9 @@ open class DocumentView(context: Context,
         // Проходим попиксельно по оси x
         while (x1 < xEnd) {
             // В каком пикселе мы сейчас находимся (px1,py1) - (px2,py2)
-            val px1 = Math.floor(x1)
+            val px1 = floor(x1)
             val px2 = px1 + 1.0
-            var py1 = Math.floor(yStart)
+            var py1 = floor(yStart)
 
             // Получаем прямоугольный треугольник (x1,y1) - (x1,y2) - (x2,y2),
             // в котором x2 выровнено по границе, т.е. по оси X мы всегда будем
@@ -882,7 +937,7 @@ open class DocumentView(context: Context,
     }
 
     /**
-     * Прорисовка горизотальных линий рамки.
+     * Рисование горизотальных линий рамки.
      *
      * Для прорисовки линий рамки вместе с функцией drawBorderCorner().
      *
@@ -900,10 +955,10 @@ open class DocumentView(context: Context,
             color: Int) {
 
         // Координаты для линии из "чистого" цвета
-        val l = Math.ceil(left.toDouble()).toFloat()
-        val r = Math.floor(right.toDouble()).toFloat()
+        val l = ceil(left)
+        val r = floor(right)
 
-        var py1 = Math.floor(top.toDouble()).toFloat()
+        var py1 = floor(top)
 
         // Координаты и размеры отступов слева и справа, для которых понадобится antialias
         var wl = 0f
@@ -913,12 +968,12 @@ open class DocumentView(context: Context,
 
         if (left < l) {
             wl = l - left
-            ll = Math.floor(left.toDouble()).toFloat()
+            ll = floor(left)
         }
 
         if (right > r) {
             wr = right - r
-            rr = Math.floor(right.toDouble()).toFloat()
+            rr = floor(right)
         }
 
         val isAntiAlias = paint.isAntiAlias
@@ -939,7 +994,7 @@ open class DocumentView(context: Context,
     }
 
     /**
-     * Прорисовка вертикальных линий рамки.
+     * Рисование вертикальных линий рамки.
      *
      * Для прорисовки линий рамки вместе с функцией drawBorderCorner().
      *
@@ -957,10 +1012,10 @@ open class DocumentView(context: Context,
             color: Int) {
 
         // Координаты для линии из "чистого" цвета
-        val t = Math.ceil(top.toDouble()).toFloat()
-        val b = Math.floor(bottom.toDouble()).toFloat()
+        val t = ceil(top)
+        val b = floor(bottom)
 
-        var px1 = Math.floor(left.toDouble()).toFloat()
+        var px1 = floor(left)
 
         // Координаты и размеры отступов сверху и снизу, для которых понадобится antialias
         var ht = 0f
@@ -970,12 +1025,12 @@ open class DocumentView(context: Context,
 
         if (top < t) {
             ht = t - top
-            tt = Math.floor(top.toDouble()).toFloat()
+            tt = floor(top)
         }
 
         if (bottom > b) {
             hb = bottom - b
-            bb = Math.floor(bottom.toDouble()).toFloat()
+            bb = floor(bottom)
         }
 
         val isAntiAlias = paint.isAntiAlias
@@ -993,5 +1048,28 @@ open class DocumentView(context: Context,
         }
 
         paint.isAntiAlias = isAntiAlias
+    }
+
+    /**
+     * Вычисление внутренних границ секций и параграфов.
+     */
+    private fun getInnerBoundary(clipTop: Float, clipLeft: Float, clipRight: Float,
+            blockStyle: BlockStyle, fontSize: Float, parentWidth: Float)
+            : Triple<Float, Float, Float> {
+
+        val top = clipTop +
+                Size.toPixels(blockStyle.marginTop, this.density, fontSize, parentWidth) +
+                Size.toPixels(blockStyle.borderTop, this.density, fontSize) +
+                Size.toPixels(blockStyle.paddingTop, this.density, fontSize, parentWidth)
+        val left = clipLeft +
+                Size.toPixels(blockStyle.marginLeft, this.density, fontSize, parentWidth) +
+                Size.toPixels(blockStyle.borderLeft, this.density, fontSize) +
+                Size.toPixels(blockStyle.paddingLeft, this.density, fontSize, parentWidth)
+        val right = clipRight -
+                Size.toPixels(blockStyle.marginRight, this.density, fontSize, parentWidth) -
+                Size.toPixels(blockStyle.borderRight, this.density, fontSize) -
+                Size.toPixels(blockStyle.paddingRight, this.density, fontSize, parentWidth)
+
+        return Triple(top, left, right)
     }
 }
