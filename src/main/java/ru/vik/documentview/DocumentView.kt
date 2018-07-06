@@ -637,7 +637,7 @@ open class DocumentView(context: Context,
 
         if (getFontType == GetFontType.BY_SHORT_NAME) {
             characterStyle.bold?.also { textPaint.isFakeBoldText = it }
-            characterStyle.italic?.also { textPaint.textSkewX = if (it) -0.25f else 0f }
+            characterStyle.italic?.also { textPaint.textSkewX = if (it) -0.2f else 0f }
         }
 
         textPaint.typeface = font.typeface
