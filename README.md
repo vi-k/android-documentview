@@ -27,24 +27,29 @@ Layout:
 </ScrollView>
 ```
 
+MainActivity.kt:
 ```kotlin
-val docView = findViewById(R.id.docView)
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_main)
 
-val fontList = FontList()
-docView.fontList = fontList
+    val docView = findViewById(R.id.docView)
 
-fontList.createFamily("sans_serif", Font(Typeface.SANS_SERIF))
+    val fontList = FontList()
+    docView.fontList = fontList
 
-docView.characterStyle.font = "sans_serif"
-docView.characterStyle.size = Size.dp(16f)
-docView.characterStyle.scaleX = 0.85f
+    fontList.createFamily("sans_serif", Font(Typeface.SANS_SERIF))
 
-val document = SimpleHtmlDocument()
-docView.document = document
+    docView.characterStyle.font = "sans_serif"
+    docView.characterStyle.size = Size.dp(16f)
+    docView.characterStyle.scaleX = 0.85f
 
-document.blockStyle.setPadding(Size.dp(4f))
+    val document = SimpleHtmlDocument()
+    docView.document = document
 
-  document.setText("<h1>DocumentView Sample</h1>\n" +
+    document.blockStyle.setPadding(Size.dp(4f))
+
+    document.setText("<h1>DocumentView Sample</h1>\n" +
           "<p>Нормальный, <b>полужирный</b>, <i>курсив</i>, <u>подчёркнутый</u>, <s>зачёркнутый</s>.</p>")
-
+}
 ```
