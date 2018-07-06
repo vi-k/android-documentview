@@ -14,6 +14,8 @@ import kotlin.math.floor
 import ru.vik.utils.parser.StringParser
 import ru.vik.utils.color.mix
 import ru.vik.utils.document.*
+import kotlin.math.max
+import kotlin.math.min
 
 open class DocumentView(context: Context,
         attrs: AttributeSet?, defStyleAttr: Int) : View(context, attrs, defStyleAttr) {
@@ -89,7 +91,7 @@ open class DocumentView(context: Context,
     /**
      * Рисование View или вычисление необходимой высоты (при canvas == null).
      *
-     * @param canvas Если null, то тоько вычисление высоты.
+     * @param canvas Если null, то только вычисление высоты.
      * @param width В OnMeasure() ещё не установлена ширина View, поэтому будущуюю ширину
      * необходимо задать вручную.
      */
@@ -316,9 +318,9 @@ open class DocumentView(context: Context,
                     while (!parsed) {
                         // Собираем сегменты в строку и смотрим, не вышли ли мы за её пределы
 
-                        val curLineWidth = lineWidth -
+                        val curLineWidth = max(0f, lineWidth -
                                 if (isFirstLine) firstLeftIndent + firstRightIndent
-                                else 0f
+                                else 0f)
 
 //                        this.log.warning("curLineWidth=$curLineWidth " +
 //                                         "lineWidth=$lineWidth " +
@@ -439,8 +441,8 @@ open class DocumentView(context: Context,
                             var descent = 0f
 
                             for (i in first..last) {
-                                ascent = Math.min(ascent, this.segments[i].ascent)
-                                descent = Math.max(descent, this.segments[i].descent)
+                                ascent = min(ascent, this.segments[i].ascent)
+                                descent = max(descent, this.segments[i].descent)
                             }
 
                             baseline = paragraphBottom - ascent
@@ -610,10 +612,10 @@ open class DocumentView(context: Context,
 
         for (span in paragraph.spans) {
             if (span.start > start) {
-                end = Math.min(end, span.start)
+                end = min(end, span.start)
             } else if (span.end > start) {
                 spanCharacterStyle.attach(span.characterStyle)
-                end = Math.min(end, span.end)
+                end = min(end, span.end)
             }
         }
 
@@ -847,24 +849,24 @@ open class DocumentView(context: Context,
         var minWidth = this.suggestedMinimumWidth
         var minHeight = this.suggestedMinimumHeight
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            minWidth = Math.max(minWidth, this.minimumWidth)
-            minHeight = Math.max(minHeight, this.minimumHeight)
+            minWidth = max(minWidth, this.minimumWidth)
+            minHeight = max(minHeight, this.minimumHeight)
         }
 
-        val desiredWidth = 0
-
+        // DocumentView не рассчитан на wrap_content по ширине
         val width = when (widthMode) {
             View.MeasureSpec.EXACTLY -> widthSize
-            View.MeasureSpec.AT_MOST -> Math.min(desiredWidth, widthSize)
-            else -> Math.max(desiredWidth, minWidth)
+            View.MeasureSpec.AT_MOST -> widthSize // min(desiredWidth, widthSize)
+            else -> minWidth // max(desiredWidth, minWidth)
         }
+        if (width <= 0) throw IllegalArgumentException("Width of DocumentView cannot be zero")
 
-        val desiredHeight = ceil(drawView(null, width)).toInt()
+        val desiredHeight by lazy { ceil(drawView(null, width)).toInt() }
 
         val height = when (heightMode) {
             View.MeasureSpec.EXACTLY -> heightSize
-            View.MeasureSpec.AT_MOST -> Math.min(desiredHeight, heightSize)
-            else -> Math.max(desiredHeight, minHeight)
+            View.MeasureSpec.AT_MOST -> min(desiredHeight, heightSize)
+            else -> max(desiredHeight, minHeight)
         }
 
         setMeasuredDimension(width, height)
@@ -924,7 +926,7 @@ open class DocumentView(context: Context,
             // Получаем прямоугольный треугольник (x1,y1) - (x1,y2) - (x2,y2),
             // в котором x2 выровнено по границе, т.е. по оси X мы всегда будем
             // находиться внутри одного пикселя, а по оси Y будем спускаться вниз
-            val x2 = Math.min(px2, xEnd)
+            val x2 = min(px2, xEnd)
             val w = x2 - x1
             val y2 = y1 + w * dy // Если расчёты x2 верны, то за yEnd мы не выйдем
             val h = y2 - y1
@@ -940,15 +942,15 @@ open class DocumentView(context: Context,
                 val py2 = py1 + 1.0
 
                 // Площадь, которую занимают в пикселе оба цвета
-                var sCom = (px2 - Math.max(px1, xStart)) *
-                        (py2 - Math.max(py1, yStart))
+                var sCom = (px2 - max(px1, xStart)) *
+                        (py2 - max(py1, yStart))
                 if (px2 > xEnd && py2 > yEnd) {
                     sCom -= (px2 - xEnd) * (py2 - yEnd)
                 }
 
                 if (py1 < y2 && py2 > y1) {
-                    val yi = Math.min(py2, y2)
-                    val hi = Math.max(yi - y1, 0.0)
+                    val yi = min(py2, y2)
+                    val hi = max(yi - y1, 0.0)
 
                     // Альфа первого цвета зависит от площади, которую занимает треугольник
                     // в данном пикселе. В первом пикселе эта площадь пропорциональна площади
@@ -1038,7 +1040,7 @@ open class DocumentView(context: Context,
 
         while (py1 < bottom) {
             val py2 = py1 + 1f
-            val h = Math.min(py2, bottom) - Math.max(py1, top)
+            val h = min(py2, bottom) - max(py1, top)
 
             drawLine(canvas, l, py1, r, py1, color.mix(h))
             if (wl != 0f) drawPoint(canvas, ll, py1, color.mix(h * wl))
@@ -1095,7 +1097,7 @@ open class DocumentView(context: Context,
 
         while (px1 < right) {
             val px2 = px1 + 1f
-            val w = Math.min(px2, right) - Math.max(px1, left)
+            val w = min(px2, right) - max(px1, left)
 
             drawLine(canvas, px1, t, px1, b, color.mix(w))
             if (ht != 0f) drawPoint(canvas, px1, tt, color.mix(w * ht))
