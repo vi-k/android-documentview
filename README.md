@@ -4,7 +4,7 @@
 
 Изначально создавался для вывода HTML. Для моих задач обычный TextView с его [fromHtml()](https://developer.android.com/reference/android/text/Html.html#fromHtml(java.lang.String,%20int)) оказался недостаточным. Во-первых, не доставало растягивания по ширине (justification появился в API 26, а я ориентировался на API 15). Во-вторых, перенос строк на мягких переносах работал как-то уж совсем произвольно (то переносит, то не переносит, логики не увидел). В-третьих, HTML-код в моём головном проекте поставляется пользователем, и мне, с одной стороны, хотелось полностью контролировать, что будет в этом HTML, ограничивая пользователя от лишнего, а с другой стороны, наоборот, хотелось добавить возможности (дополнительные теги и аттрибуты), которых нет в обычном HTML.
 
-Первый [проект](https://github.com/vi-k/android-html2spannable) свёлся к тому, что я сам парсил HTML и затем формировал из него [Spannable](https://developer.android.com/reference/android/text/SpannableStringBuilder). Столкнувшись с некоторыми ограничениями, решил сделать отдельный свой собственный ~велосипед~ класс [Document](https://github.com/vi-k/kotlin-utils/tree/master/src/main/java/ru/vik/utils/document), хранящий в себе форматированный документ. Причём сделать его не зависящим ни от Android SDK (прогнозируемая многоплатформенность Kotlin заставляет думать наперёд), ни от HTML. Парсинг HTML отдан отдельному классу [BaseHtml](https://github.com/vi-k/kotlin-utils/tree/master/src/main/java/ru/vik/utils/html) и его наследникам. Преобразование результата парсинга в Document отдано классу [BaseHtmlDocument](https://github.com/vi-k/kotlin-utils/tree/master/src/main/java/ru/vik/utils/htmldocument) и его наследникам.
+Первый проект [Html2Spannable](https://github.com/vi-k/android-html2spannable) свёлся к тому, что я сам парсил HTML и затем формировал из него [Spannable](https://developer.android.com/reference/android/text/SpannableStringBuilder). Столкнувшись с некоторыми ограничениями, решил сделать свой собственный отдельный ~велосипед~ класс [Document][2], хранящий в себе форматированный документ. Причём сделать его не зависящим ни от Android SDK (прогнозируемая многоплатформенность Kotlin заставляет думать наперёд), ни от HTML. Парсинг HTML отдан отдельному классу [BaseHtml][3] и его наследникам. Преобразование результата парсинга в Document отдано классу [BaseHtmlDocument][4] и его наследникам.
 
 Описание указанных классов смотрите здесь: <https://github.com/vi-k/kotlin-utils>.
 
@@ -63,4 +63,58 @@ override fun onCreate(savedInstanceState: Bundle?) {
 }
 ```
 
-![Screenshot_20180709-150001.png](docs/Screenshot_20180709-150001.png)
+Результат:
+![README_Screenshot1.png](README_Screenshot1.png)
+
+Что здесь:
+
+Сначала находим наш виджет:
+```kotlin
+val docView: DocumentView = findViewById(R.id.docView)
+```
+
+Создаём шрифты, которые будем использовать:
+```kotlin
+val fontList = FontList()
+fontList.createFamily("sans_serif", Font(Typeface.SANS_SERIF))
+fontList.createFamily("serif", Font(Typeface.SERIF))
+fontList.createFamily("mono", Font(Typeface.MONOSPACE))
+docView.fontList = fontList
+```
+
+Функция `createFamily()` создаёт сразу 4 шрифта для разных начертаний: нормального, полужирного, курсива и полужирного вместе с курсивом. Это имеет смысл только для встроенных шрифтов. Для пользовательских шрифтов все файлы с начертаниями необходимо загрузить отдельно. Как это сделать, смотрите в [документации](https://github.com/vi-k/android-documentview/wiki/Fonts.md). Если шрифт не имеет отдельных файлов для отдельных начертаний, то ничего загружать не надо, полужирный и курсив будут создаваться автоматически.
+
+Настраиваем параметры по-умолчанию:
+```kotlin
+docView.characterStyle.font = "sans_serif"
+docView.characterStyle.size = Size.dp(16f)
+docView.paragraphStyle.firstLeftIndent = Size.dp(32f)
+```
+
+Шрифт по-умолчанию, базовый размер шрифта, отступ для первой строки. Подробное описание параметров смотрите в документации к [Document][1].
+
+Создаём объект класса Document, отвечающий за форматирование документа. В данном случае используем уже готовый класс преобразователь из HTML в Document.
+```kotlin
+val document = SimpleHtmlDocument()
+docView.document = document
+```
+
+Повторюсь, DocumentView не связан напрямую с HTML. Поэтому в этом месте может оказать и какой-нибудь другой класс-преобра. Например, (в будущем) PlainTextDocument и MarkdownDocument.
+4
+Устанавливаем отступы от краёв:
+```kotlin
+document.blockStyle.setPadding(Size.dp(4f))
+```
+
+Тоже самое можно сделать и с помощью свойств `docView.paddingLeft`, `docView.paddingTop` и т.п., но с той разницей, что эти свойства принимают значение в пикселях устройства, в то время как Document принимает значение в пикселях, не зависящих от устройства (device-independent pixels). Также можно указать значение, пропорциональное размеру шрифта (`Size.em()`) или пропорциональное ширине виджета (`Size.percent()` или `Size.ratio()`).
+
+Для подробностей смотрите документацию:
+1) [DocumentView][1].
+2) [Document][2].
+3) [Html][3].
+4) [HtmlDocument][4].
+
+[1]:https://github.com/vi-k/android-documentview/wiki
+[2]:https://github.com/vi-k/kotlin-utils/wiki/document
+[3]:https://github.com/vi-k/kotlin-utils/wiki/html
+[4]:https://github.com/vi-k/kotlin-utils/wiki/htmldocument
