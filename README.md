@@ -62,3 +62,5 @@ override fun onCreate(savedInstanceState: Bundle?) {
                 "<p align='justify'>$testString2</p>")
 }
 ```
+
+![docs/Screenshot_20180709-150001.png]
