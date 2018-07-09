@@ -63,4 +63,4 @@ override fun onCreate(savedInstanceState: Bundle?) {
 }
 ```
 
-![docs/Screenshot_20180709-150001.png]
+![Screenshot_20180709-150001.png](docs/Screenshot_20180709-150001.png)
