@@ -12,7 +12,7 @@
 
 Работа только начата. Ещё многое предстоит сделать. Но простое форматирование текста уже доступно. Ссылки, изображения, таблицы пока не доступны.
 
-## Использование
+## Пример использования
 
 Layout:
 ```xml
@@ -34,23 +34,31 @@ override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     setContentView(R.layout.activity_main)
 
-    val docView = findViewById(R.id.docView)
+        val docView: DocumentView = findViewById(R.id.docView)
 
-    val fontList = FontList()
-    docView.fontList = fontList
+        val fontList = FontList()
+        fontList.createFamily("sans_serif", Font(Typeface.SANS_SERIF))
+        fontList.createFamily("serif", Font(Typeface.SERIF))
+        fontList.createFamily("mono", Font(Typeface.MONOSPACE))
 
-    fontList.createFamily("sans_serif", Font(Typeface.SANS_SERIF))
+        docView.fontList = fontList
 
-    docView.characterStyle.font = "sans_serif"
-    docView.characterStyle.size = Size.dp(16f)
-    docView.characterStyle.scaleX = 0.85f
+        docView.characterStyle.font = "sans_serif"
+        docView.characterStyle.size = Size.dp(16f)
+        docView.paragraphStyle.firstLeftIndent = Size.dp(32f)
 
-    val document = SimpleHtmlDocument()
-    docView.document = document
+        val document = SimpleHtmlDocument()
+        docView.document = document
 
-    document.blockStyle.setPadding(Size.dp(4f))
+        document.blockStyle.setPadding(Size.dp(4f))
 
-    document.setText("<h1>DocumentView Sample</h1>\n" +
-          "<p>Нормальный, <b>полужирный</b>, <i>курсив</i>, <u>подчёркнутый</u>, <s>зачёркнутый</s>.</p>")
+        val testString = "Нормальный, <b>полужирный</b>, <i>курсив</i>, <u>подчёркнутый</u>, <s>зачёркнутый</s>, верхний<sup>индекс</sup>, нижний<sub>индекс</sub>."
+        val testString2 = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+
+        document.setText("<h1>DocumentView Sample</h1>\n" +
+                "<p>$testString</p>\n" +
+                "<p font='serif'>$testString</p>\n" +
+                "<p font='mono'>$testString</p>\n" +
+                "<p align='justify'>$testString2</p>")
 }
 ```
