@@ -8,6 +8,7 @@ DocumentView это Kotlin-виджет для Android для вывода от�
 - [Простой пример](#Простой-пример)
 - [Абзацы](#Абзацы)
 - [Шрифты](#Шрифты)
+- [Рамки](#Рамки)
 
 ## Простой пример
 
@@ -27,21 +28,21 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
     val docView: DocumentView = findViewById(R.id.docView)
 
-    docView.document.setText("Нормальный, полужирный, курсив, полужирный курсив, " +
-            "подчёркнутый, зачёркнутый, верхнийиндекс, нижнийиндекс, красный.")
+    docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ...")
     docView.document
-            .add(Span(CharacterStyle(bold = true), 12, 22))
-            .add(Span(CharacterStyle(italic = true), 24, 30))
-            .add(Span(CharacterStyle(bold = true, italic = true), 32, 49))
-            .add(Span(CharacterStyle(underline = true), 51, 63))
-            .add(Span(CharacterStyle(strike = true), 65, 76))
-            .add(Span(CharacterStyle(
+            .addSpan(CharacterStyle(color = Color.RED), 0, 5)
+            .addSpan(CharacterStyle(bold = true), 6, 11)
+            .addSpan(CharacterStyle(italic = true), 12, 17)
+            .addSpan(CharacterStyle(bold = true, italic = true), 18, 21)
+            .addSpan(CharacterStyle(underline = true), 22, 26)
+            .addSpan(CharacterStyle(strike = true), 28, 39)
+            .addSpan(CharacterStyle(
                     baselineShift = Size.em(-0.4f),
-                    size = Size.em(0.85f)), 85, 91))
-            .add(Span(CharacterStyle(
+                    size = Size.em(0.85f)), 50, 55)
+            .addSpan(CharacterStyle(
                     baselineShift = Size.em(0.25f),
-                    size = Size.em(0.85f)), 99, 105))
-            .add(Span(CharacterStyle(color = Color.RED), 107, 114))
+                    size = Size.em(0.85f)), 60, 63)
+            .addSpan(CharacterStyle(scaleX = 0.6f), 64, 71)
 }
 ```
 
@@ -49,18 +50,44 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 Виджет содержит внутри себя объект платформонезависимого класса [Document], который хранит в себе форматируемый документ. С ним мы и работаем, добавляя участки форматирования. Класс Span хранит в себе стиль знаков, начало и конец форматирования.
 
-Участки могут пересекаться:
+Участки могут пересекаться. В этом случае они либо дополняют друг друга, либо последний заменяет первый:
 
 ```kotlin
-    docView.document.setText("Полужирный, полужирный с курсивом, курсив.")
-    docView.document
-            .add(Span(CharacterStyle(bold = true), 0, 33))
-            .add(Span(CharacterStyle(italic = true), 12, 41))
+docView.document.setText("Lorem ipsum dolor sit amet ...")
+docView.document
+        .addSpan(CharacterStyle(bold = true), 0, 17)
+        .addSpan(CharacterStyle(italic = true), 12, 26)
 ```
 
 ![screenshot_2.png](docs/screenshot_2.png)
 
+```kotlin
+docView.document
+        .addSpan(CharacterStyle(color = Color.RED), 0, 17)
+        .addSpan(CharacterStyle(color = Color.GREEN), 12, 41)
+```
+
+![screenshot_2_2.png](docs/screenshot_2_2.png)
+
 ## Абзацы
+
+В предыдущих примерах был только один абзац. Если же абзацев несколько, то доступ к каждому осуществляется по индексу:
+
+```kotlin
+docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " +
+        "do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut " +
+        "aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit " +
+        "in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n" +
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia " +
+        "deserunt mollit anim id est laborum.")
+docView.document[0]
+        .addSpan(CharacterStyle(color = Color.RED), 0, 1)
+docView.document[1]
+        .addSpan(CharacterStyle(color = Color.RED), 0, 1)
+docView.document[2]
+        .addSpan(CharacterStyle(color = Color.RED), 0, 1)
+```
 
 ![screenshot_3.png](docs/screenshot_3.png)
 
@@ -71,14 +98,50 @@ override fun onCreate(savedInstanceState: Bundle?) {
 val fontList = FontList()
 fontList.createFamily("sans_serif", Font(Typeface.SANS_SERIF))
 fontList.createFamily("serif", Font(Typeface.SERIF))
+fontList.createFamily("mono", Font(Typeface.MONOSPACE))
 docView.fontList = fontList
 
-
+docView.document[0].characterStyle.font = "sans_serif"
+docView.document[1].characterStyle.font = "serif"
+docView.document[2].characterStyle.font = "mono"
 ```
 
 ![screenshot_4.png](docs/screenshot_4.png)
 
-Функция `createFamily()` создаёт сразу 4 шрифта для разных начертаний: нормального, **полужирного**, *курсива* и ***полужирного вместе с курсивом***. Это имеет смысл только для встроенных шрифтов. Для пользовательских шрифтов все файлы с начертаниями необходимо загрузить отдельно. Как это сделать, смотрите в [документации](https://github.com/vi-k/android-documentview/wiki/Установка шрифтов). Если шрифт не имеет отдельных файлов для отдельных начертаний, то ничего загружать не надо, полужирный и курсив будут создаваться автоматически при выводе.
+Функция `createFamily()` создаёт сразу 4 шрифта для разных начертаний: нормального, **полужирного**, *курсива* и ***полужирного вместе с курсивом***. Это возможно только для встроенных шрифтов. Для пользовательских шрифтов все файлы с начертаниями необходимо загрузить отдельно. Если этого не сделать, соответствующий шрифт будет при необходимости генерироваться автоматически. Но специально приготовленные шрифты могут существенно отличаться от генерируемых:
+
+```kotlin
+docView.document.setText("Lorem ipsum dolor sit amet ...\n" +
+        "Lorem ipsum dolor sit amet ...")
+docView.document[0]
+        .addSpan(Span(CharacterStyle(bold = true), 0, 17))
+        .addSpan(Span(CharacterStyle(italic = true), 12, 26))
+docView.document[1]
+        .addSpan(Span(CharacterStyle(bold = true), 0, 17))
+        .addSpan(Span(CharacterStyle(italic = true), 12, 26))
+
+val fontList = FontList()
+fontList.createFamily("serif1", Font(Typeface.SERIF))
+fontList["serif2"] = Font(Typeface.SERIF)
+docView.fontList = fontList
+
+docView.document[0].characterStyle.font = "serif1"
+docView.document[1].characterStyle.font = "serif2"
+```
+
+![screenshot_5.png](docs/screenshot_5.png)
+
+Чтобы `DocumentView` мог в нужные моменты задействовать нужные шрифты, к основному названию надо добавить соответствующий постфикс: `:bold`, `:italic`, `:bold_italic`
+
+```kotlin
+fontList["serif2:bold"] = Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
+fontList["serif2:italic"] = Font(Typeface.create(Typeface.SERIF, Typeface.ITALIC))
+fontList["serif2:bold_italic"] = Font(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC))
+```
+
+![screenshot_5_2.png](docs/screenshot_5_2.png)
+
+## Рамки
 
 Настраиваем параметры по-умолчанию:
 ```kotlin
