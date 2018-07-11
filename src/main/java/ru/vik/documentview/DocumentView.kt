@@ -8,14 +8,11 @@ import android.text.TextPaint
 import android.util.AttributeSet
 import android.view.View
 import java.util.logging.Logger
-import kotlin.math.ceil
-import kotlin.math.floor
 
 import ru.vik.utils.parser.StringParser
 import ru.vik.utils.color.mix
 import ru.vik.utils.document.*
-import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.*
 
 open class DocumentView(context: Context,
         attrs: AttributeSet?, defStyleAttr: Int) : View(context, attrs, defStyleAttr) {
@@ -445,8 +442,8 @@ open class DocumentView(context: Context,
                                 descent = max(descent, this.segments[i].descent)
                             }
 
-                            baseline = paragraphBottom - ascent
-                            paragraphBottom = baseline + descent
+                            baseline = round(paragraphBottom - ascent)
+                            paragraphBottom = round(baseline + descent)
 
                             for (i in first..last) {
                                 this.segments[i].baseline = baseline
@@ -635,9 +632,9 @@ open class DocumentView(context: Context,
 
         val (font, getFontType) = getFont(characterStyle)
 
-        if (getFontType == GetFontType.BY_SHORT_NAME) {
+        if (getFontType != GetFontType.BY_FULL_NAME) {
             characterStyle.bold?.also { textPaint.isFakeBoldText = it }
-            characterStyle.italic?.also { textPaint.textSkewX = if (it) -0.2f else 0f }
+            characterStyle.italic?.also { textPaint.textSkewX = if (it) -0.18f else 0f }
         }
 
         textPaint.typeface = font.typeface
