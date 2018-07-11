@@ -130,7 +130,7 @@ docView.document[1].characterStyle.font = "serif2"
 
 ![screenshot_5.png](docs/screenshot_5.png)
 
-Чтобы `DocumentView` мог в нужные моменты задействовать нужные шрифты, к основному названию надо добавить соответствующий постфикс: `:bold`, `:italic`, `:bold_italic`
+Чтобы DocumentView в нужные моменты мог задействовать нужные шрифты, при создании шрифта к основному названию надо добавить соответствующий постфикс: `:bold`, `:italic`, `:bold_italic`
 
 ```kotlin
 docView.fontList["serif2:bold"] = Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
