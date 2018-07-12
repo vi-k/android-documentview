@@ -48,21 +48,36 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 Виджет содержит внутри себя объект платформонезависимого класса `[Document]`, который хранит в себе форматируемый документ. С ним мы и работаем, добавляя участки форматирования. Класс Span хранит в себе стиль знаков, начало и конец форматирования.
 
+Не всегда удобно отсчитывать количество символов для создания участков, для быстрого форматирования проще прибегнуть к нумерации слов. Функция `addWordSpan()` принимает на вход первым параметром номер слова (нумерация начинается с 1). Вторым параметром может указано количество слов, на которые должно распространиться форматирование.
+
+```kotlin
+docView.document
+        .addWordSpan(1, CharacterStyle(color = Color.RED))
+        .addWordSpan(2, CharacterStyle(bold = true))
+        .addWordSpan(3, CharacterStyle(italic = true))
+        .addWordSpan(4, CharacterStyle(bold = true, italic = true))
+        .addWordSpan(5, CharacterStyle(underline = true))
+        .addWordSpan(6, CharacterStyle(strike = true))
+        .addWordSpan(8, CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f)))
+        .addWordSpan(10, CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f)))
+        .addWordSpan(11, CharacterStyle(scaleX = 0.6f))
+```
+
 Участки могут пересекаться. В этом случае они либо дополняют друг друга, либо последний перекрывает первый:
 
 ```kotlin
 docView.document.setText("Lorem ipsum dolor sit amet ...")
 docView.document
-        .addSpan(CharacterStyle(bold = true), 0, 17)
-        .addSpan(CharacterStyle(italic = true), 12, 26)
+        .addWordSpan(1, 3, CharacterStyle(bold = true))
+        .addWordSpan(3, 3, CharacterStyle(italic = true))
 ```
 
 ![screenshot_2.png](docs/screenshot_2.png)
 
 ```kotlin
 docView.document
-        .addSpan(CharacterStyle(color = Color.RED), 0, 17)
-        .addSpan(CharacterStyle(color = Color.GREEN), 12, 41)
+        .addWordSpan(1, 3, CharacterStyle(color = Color.RED))
+        .addWordSpan(3, -1, CharacterStyle(color = Color.GREEN)) // count = -1 - до конца абзаца
 ```
 
 ![screenshot_2_2.png](docs/screenshot_2_2.png)
@@ -123,11 +138,11 @@ docView.document[2].characterStyle.font = "mono"
 docView.document.setText("Lorem ipsum dolor sit amet ...\n" +
         "Lorem ipsum dolor sit amet ...")
 docView.document[0]
-        .addSpan(CharacterStyle(bold = true), 0, 17)
-        .addSpan(CharacterStyle(italic = true), 12, 26)
+        .addWordSpan(1, 3, CharacterStyle(bold = true))
+        .addWordSpan(3, 3, CharacterStyle(italic = true))
 docView.document[1]
-        .addSpan(CharacterStyle(bold = true), 0, 17)
-        .addSpan(CharacterStyle(italic = true), 12, 26)
+        .addWordSpan(1, 3, CharacterStyle(bold = true))
+        .addWordSpan(3, 3, CharacterStyle(italic = true))
 
 docView.fontList.createFamily("serif1", Font(Typeface.SERIF))
 docView.fontList["serif2"] = Font(Typeface.SERIF)
