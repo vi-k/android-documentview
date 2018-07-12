@@ -148,6 +148,16 @@ docView.fontList["serif2:bold_italic"] = Font(Typeface.create(Typeface.SERIF, Ty
 
 ![screenshot_5_2.png](docs/screenshot_5_2.png)
 
+Если проект использует несколько DocumentView, то удобнее создать один список шрифтов и использовать его для всех создаваемых виджетов:
+
+```kotlin
+val fontList = FontList()
+fontList.createFamily(...)
+fontList["myfont"] = ...
+...
+docView.fontLst = fontList
+```
+
 ## Рамки
 
 Настраиваем параметры по-умолчанию:
