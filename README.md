@@ -167,11 +167,22 @@ docView.fontList["serif2:bold_italic"] = Font(Typeface.create(Typeface.SERIF, Ty
 
 ```kotlin
 val fontList = FontList()
-fontList.createFamily(...)
-fontList["myfont"] = ...
-...
-docView.fontLst = fontList
+fontList["georgia"] = Font(Typeface.createFromAsset(this.assets, "fonts/georgia.ttf")!!)
+fontList["georgia:bold"] = Font(Typeface.createFromAsset(this.assets, "fonts/georgiab.ttf")!!)
+fontList["georgia:italic"] = Font(Typeface.createFromAsset(this.assets, "fonts/georgiai.ttf")!!)
+fontList["georgia:bold_italic"] = Font(Typeface.createFromAsset(this.assets, "fonts/georgiaz.ttf")!!)
+
+docView.fontList = fontList
+docView.document.characterStyle.font = "georgia"
+
+docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " +
+        "do eiusmod tempor incididunt ut labore et dolore magna aliqua.")
+docView.document
+        .addWordSpan(6, 8, CharacterStyle(bold = true))
+        .addWordSpan(9, -1, CharacterStyle(italic = true))
 ```
+
+![screenshot_5_3.png](docs/screenshot_5_3.png)
 
 ## Рамки
 
