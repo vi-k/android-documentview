@@ -27,7 +27,7 @@ open class DocumentView(context: Context,
     private val log = Logger.getLogger("DocumentView")!!
 
     var document = Document()
-    var fontList: FontList? = null
+    var fontList = FontList()
     var paragraphStyle = ParagraphStyle.default()
     var characterStyle = CharacterStyle.default()
     var drawEmptyParagraph = false
@@ -771,11 +771,11 @@ open class DocumentView(context: Context,
      */
     internal fun getFont(characterStyle: CharacterStyle): Pair<Font, GetFontType> {
         var getFontType = GetFontType.BY_FULL_NAME
-        var font = this.fontList?.get(getFontFullName(characterStyle))
+        var font = this.fontList[getFontFullName(characterStyle)]
 
         if (font == null) {
             getFontType = GetFontType.BY_SHORT_NAME
-            font = characterStyle.font?.let { this.fontList?.get(it) }
+            font = characterStyle.font?.let { this.fontList[it] }
 
             if (font == null) {
                 getFontType = GetFontType.DEFAULT
