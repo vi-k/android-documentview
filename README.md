@@ -38,12 +38,8 @@ override fun onCreate(savedInstanceState: Bundle?) {
             .addSpan(CharacterStyle(bold = true, italic = true), 18, 21)
             .addSpan(CharacterStyle(underline = true), 22, 26)
             .addSpan(CharacterStyle(strike = true), 28, 39)
-            .addSpan(CharacterStyle(
-                    baselineShift = Size.em(-0.4f),
-                    size = Size.em(0.85f)), 50, 55)
-            .addSpan(CharacterStyle(
-                    baselineShift = Size.em(0.25f),
-                    size = Size.em(0.85f)), 60, 63)
+            .addSpan(CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f)), 50, 55)
+            .addSpan(CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f)), 60, 63)
             .addSpan(CharacterStyle(scaleX = 0.6f), 64, 71)
 }
 ```
@@ -52,7 +48,7 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 Виджет содержит внутри себя объект платформонезависимого класса `[Document]`, который хранит в себе форматируемый документ. С ним мы и работаем, добавляя участки форматирования. Класс Span хранит в себе стиль знаков, начало и конец форматирования.
 
-Участки могут пересекаться. В этом случае они либо дополняют друг друга, либо последний заменяет первый:
+Участки могут пересекаться. В этом случае они либо дополняют друг друга, либо последний перекрывает первый:
 
 ```kotlin
 docView.document.setText("Lorem ipsum dolor sit amet ...")
@@ -93,9 +89,21 @@ docView.document[2]
 
 ![screenshot_3.png](docs/screenshot_3.png)
 
+У абзаца есть собственные настройки стиля знаков, изменение которого оказывает воздействие на весь абзац:
+
+```kotlin
+docView.document[0].characterStyle.italic = true
+docView.document[1].characterStyle.size = Size.em(0.8f)
+docView.document[2].characterStyle.color = Color.GRAY
+```
+
+![screenshot_3_2.png](docs/screenshot_3_2.png)
+
+Форматирование, добавленное через `addSpan()`, накладывается поверх общих настроек абзаца.
+
 ## Шрифты
 
-Чтобы использовать другие шрифты, кроме стандартного, их надо создать:
+Чтобы использовать другие шрифты, кроме стандартного, их надо создать и добавить в список `fontList`:
 
 ```kotlin
 docView.fontList.createFamily("sans_serif", Font(Typeface.SANS_SERIF))
@@ -115,11 +123,11 @@ docView.document[2].characterStyle.font = "mono"
 docView.document.setText("Lorem ipsum dolor sit amet ...\n" +
         "Lorem ipsum dolor sit amet ...")
 docView.document[0]
-        .addSpan(Span(CharacterStyle(bold = true), 0, 17))
-        .addSpan(Span(CharacterStyle(italic = true), 12, 26))
+        .addSpan(CharacterStyle(bold = true), 0, 17)
+        .addSpan(CharacterStyle(italic = true), 12, 26)
 docView.document[1]
-        .addSpan(Span(CharacterStyle(bold = true), 0, 17))
-        .addSpan(Span(CharacterStyle(italic = true), 12, 26))
+        .addSpan(CharacterStyle(bold = true), 0, 17)
+        .addSpan(CharacterStyle(italic = true), 12, 26)
 
 docView.fontList.createFamily("serif1", Font(Typeface.SERIF))
 docView.fontList["serif2"] = Font(Typeface.SERIF)
