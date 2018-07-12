@@ -13,6 +13,7 @@ DocumentView это Kotlin-виджет для Android для вывода от�
 ## Простой пример
 
 Layout:
+
 ```xml
 <ru.vik.documentview.DocumentView
     android:id="@+id/docView"
@@ -21,6 +22,7 @@ Layout:
 ```
 
 MainActivity.kt:
+
 ```kotlin
 override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -48,7 +50,7 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 ![screenshot_1.png](docs/screenshot_1.png)
 
-Виджет содержит внутри себя объект платформонезависимого класса [Document], который хранит в себе форматируемый документ. С ним мы и работаем, добавляя участки форматирования. Класс Span хранит в себе стиль знаков, начало и конец форматирования.
+Виджет содержит внутри себя объект платформонезависимого класса `[Document]`, который хранит в себе форматируемый документ. С ним мы и работаем, добавляя участки форматирования. Класс Span хранит в себе стиль знаков, начало и конец форматирования.
 
 Участки могут пересекаться. В этом случае они либо дополняют друг друга, либо последний заменяет первый:
 
@@ -93,13 +95,12 @@ docView.document[2]
 
 ## Шрифты
 
-Создаём шрифты, которые будем использовать:
+Чтобы использовать другие шрифты, кроме стандартного, их надо создать:
+
 ```kotlin
-val fontList = FontList()
-fontList.createFamily("sans_serif", Font(Typeface.SANS_SERIF))
-fontList.createFamily("serif", Font(Typeface.SERIF))
-fontList.createFamily("mono", Font(Typeface.MONOSPACE))
-docView.fontList = fontList
+docView.fontList.createFamily("sans_serif", Font(Typeface.SANS_SERIF))
+docView.fontList.createFamily("serif", Font(Typeface.SERIF))
+docView.fontList.createFamily("mono", Font(Typeface.MONOSPACE))
 
 docView.document[0].characterStyle.font = "sans_serif"
 docView.document[1].characterStyle.font = "serif"
@@ -120,10 +121,8 @@ docView.document[1]
         .addSpan(Span(CharacterStyle(bold = true), 0, 17))
         .addSpan(Span(CharacterStyle(italic = true), 12, 26))
 
-val fontList = FontList()
-fontList.createFamily("serif1", Font(Typeface.SERIF))
-fontList["serif2"] = Font(Typeface.SERIF)
-docView.fontList = fontList
+docView.fontList.createFamily("serif1", Font(Typeface.SERIF))
+docView.fontList["serif2"] = Font(Typeface.SERIF)
 
 docView.document[0].characterStyle.font = "serif1"
 docView.document[1].characterStyle.font = "serif2"
@@ -131,12 +130,12 @@ docView.document[1].characterStyle.font = "serif2"
 
 ![screenshot_5.png](docs/screenshot_5.png)
 
-Чтобы `DocumentView` мог в нужные моменты задействовать нужные шрифты, к основному названию надо добавить соответствующий постфикс: `:bold`, `:italic`, `:bold_italic`
+Чтобы DocumentView в нужные моменты мог задействовать нужные шрифты, при создании шрифта к основному названию надо добавить соответствующий постфикс: `:bold`, `:italic`, `:bold_italic`
 
 ```kotlin
-fontList["serif2:bold"] = Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
-fontList["serif2:italic"] = Font(Typeface.create(Typeface.SERIF, Typeface.ITALIC))
-fontList["serif2:bold_italic"] = Font(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC))
+docView.fontList["serif2:bold"] = Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
+docView.fontList["serif2:italic"] = Font(Typeface.create(Typeface.SERIF, Typeface.ITALIC))
+docView.fontList["serif2:bold_italic"] = Font(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC))
 ```
 
 ![screenshot_5_2.png](docs/screenshot_5_2.png)
