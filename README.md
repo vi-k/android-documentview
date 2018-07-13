@@ -32,15 +32,17 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
     docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ...")
     docView.document
-            .addSpan(CharacterStyle(color = Color.RED), 0, 5)
-            .addSpan(CharacterStyle(bold = true), 6, 11)
-            .addSpan(CharacterStyle(italic = true), 12, 17)
-            .addSpan(CharacterStyle(bold = true, italic = true), 18, 21)
-            .addSpan(CharacterStyle(underline = true), 22, 26)
-            .addSpan(CharacterStyle(strike = true), 28, 39)
-            .addSpan(CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f)), 50, 55)
-            .addSpan(CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f)), 60, 63)
-            .addSpan(CharacterStyle(scaleX = 0.6f), 64, 71)
+            .addSpan(0, 5, CharacterStyle(color = Color.RED))
+            .addSpan(6, 11, CharacterStyle(bold = true))
+            .addSpan(12, 17, CharacterStyle(italic = true))
+            .addSpan(18, 21, CharacterStyle(bold = true, italic = true))
+            .addSpan(22, 26, CharacterStyle(underline = true))
+            .addSpan(28, 39, CharacterStyle(strike = true))
+            .addSpan(50, 55, CharacterStyle(baselineShift = Size.em(-0.4f),
+                    size = Size.em(0.85f)))
+            .addSpan(60, 63, CharacterStyle(baselineShift = Size.em(0.25f),
+                    size = Size.em(0.85f)))
+            .addSpan(64, 71, CharacterStyle(scaleX = 0.6f))
 }
 ```
 
@@ -95,11 +97,11 @@ docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing eli
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia " +
         "deserunt mollit anim id est laborum.")
 docView.document[0]
-        .addSpan(CharacterStyle(color = Color.RED), 0, 1)
+        .addSpan(0, 1, CharacterStyle(color = Color.RED))
 docView.document[1]
-        .addSpan(CharacterStyle(color = Color.RED), 0, 1)
+        .addSpan(0, 1, CharacterStyle(color = Color.RED))
 docView.document[2]
-        .addSpan(CharacterStyle(color = Color.RED), 0, 1)
+        .addSpan(0, 1, CharacterStyle(color = Color.RED))
 ```
 
 ![screenshot_3.png](docs/screenshot_3.png)
