@@ -123,7 +123,7 @@ open class DocumentView(context: Context,
                 .attach(section.paragraphStyle)
         val characterStyle = parentCharacterStyle
                 .clone()
-                .attach(section.characterStyle)
+                .attach(section.characterStyle, this.density)
 
         // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
         // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
@@ -199,7 +199,7 @@ open class DocumentView(context: Context,
                 .attach(paragraph.paragraphStyle)
         val characterStyle = parentCharacterStyle
                 .clone()
-                .attach(paragraph.characterStyle)
+                .attach(paragraph.characterStyle, this.density)
 
         // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
         // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
@@ -294,8 +294,8 @@ open class DocumentView(context: Context,
                         segmentEnd = inParser.pos
                     }
 
-                    val baselineShift =
-                            segmentCharacterStyle.baselineShift.getDpOrZero() * this.density
+                    val baselineShift = segmentCharacterStyle.baselineShift.toPixels(
+                            this.density, fontSize)
 
                     val segment = Segment(
                             isFirst = isFirst,
@@ -587,15 +587,21 @@ open class DocumentView(context: Context,
                     val withHyphen = i == lastSegmentIndex &&
                             this.segments[lastSegmentIndex].hyphenWidth != 0f
 
-                    x += drawText(canvas, paragraph.text, segment.start, segment.end,
-                            x, segment.baseline +
-                            segment.characterStyle.baselineShift.getDpOrZero() * this.density,
+                    x += drawText(canvas,
+                            paragraph.text,
+                            segment.start,
+                            segment.end,
+                            x,
+                            segment.baseline + segment.characterStyle.baselineShift.toPixels(
+                                    this.density, fontSize),
                             this.textPaint)
 
                     if (withHyphen) {
-                        x += drawText(canvas, segment.font.hyphen.toString(),
-                                x, segment.baseline +
-                                segment.characterStyle.baselineShift.getDpOrZero() * this.density,
+                        x += drawText(canvas,
+                                segment.font.hyphen.toString(),
+                                x,
+                                segment.baseline + segment.characterStyle.baselineShift.toPixels(
+                                        this.density, fontSize),
                                 this.textPaint)
                     }
                 }
@@ -622,7 +628,7 @@ open class DocumentView(context: Context,
             if (span.start > start) {
                 end = min(end, span.start)
             } else if (span.end > start) {
-                spanCharacterStyle.attach(span.characterStyle)
+                spanCharacterStyle.attach(span.characterStyle, this.density)
                 end = min(end, span.end)
             }
         }
@@ -729,7 +735,7 @@ open class DocumentView(context: Context,
 
             if (Size.isNotEmpty(borderStyle.borderLeft)) {
                 drawBorderCorner(canvas, this.paint, outLeft, outBottom, inLeft, inBottom,
-                        borderStyle.borderRight!!.color, borderStyle.borderBottom!!.color)
+                        borderStyle.borderLeft!!.color, borderStyle.borderBottom!!.color)
             }
 
             if (Size.isNotEmpty(borderStyle.borderRight)) {
