@@ -683,8 +683,8 @@ open class DocumentView(context: Context,
                 Size.toPixels(blockStyle.borderRight, this.density, fontSize, parentWidth)
 
         // Фон
-        if (blockStyle.color != 0) {
-            this.paint.color = blockStyle.color
+        if (blockStyle.backgroundColor != 0) {
+            this.paint.color = blockStyle.backgroundColor
             canvas.drawRect(outLeft, outTop, outRight, outBottom, this.paint)
         }
 
