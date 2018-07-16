@@ -7,6 +7,7 @@
 [document]:https://github.com/vi-k/kotlin-utils/wiki/document
 [html]:https://github.com/vi-k/kotlin-utils/wiki/html
 [htmldocument]:https://github.com/vi-k/kotlin-utils/wiki/htmldocument
+[color]:https://github.com/vi-k/kotlin-utils/wiki/color
 
 ## Содержание
 - [Простой пример](#Простой-пример)
@@ -192,31 +193,78 @@ docView.document
         .addWordSpan(9, -1, CharacterStyle(italic = true))
 ```
 
-![screenshot_5_3.png](docs/screenshot_5_3.png)
+![screenshot_6.png](docs/screenshot_6.png)
 
-## Рамки и отступы
+## Рамки
 
-Абзац можно оформить рамкой и отступами:
+Абзац можно оформить рамкой:
 
 ```kotlin
 docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
         "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n" +
         "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")
-docView.document[0].blockStyle
+docView.document[0].borderStyle
         .setPadding(Size.dp(8f))
         .setBorder(Border.dp(1f, Color.rgb(0xDC3023)))
         .setMargin(Size.dp(8f))
         .setBackgroundColor(Color.argb(0.1f, 0xDC3023))
-docView.document[1].blockStyle
+docView.document[1].borderStyle
         .setPadding(Size.dp(8f))
         .setBorder(Border.dp(1f, Color.rgb(0x22A7F0)))
         .setMargin(Size.dp(8f))
-        .backgroundColor = Color.argb(0.1f, 0x22A7F0)
-docView.document[2].blockStyle
+        .setBackgroundColor(Color.argb(0.1f, 0x22A7F0))
+docView.document[2].borderStyle
         .setPadding(Size.dp(8f))
         .setBorder(Border.dp(1f, Color.rgb(0x26C281)))
         .setMargin(Size.dp(8f))
-        .backgroundColor = Color.argb(0.1f, 0x26C281)
+        .setBackgroundColor(Color.argb(0.1f, 0x26C281))
 ```
 
-![screenshot_6.png](docs/screenshot_6.png)
+![screenshot_7.png](docs/screenshot_7.png)
+
+В примере изспользуется класс модуля для работы с цветом `color` ([wiki][color]).
+
+Рамки богут быть разными. Сам документ тоже может иметь отдельную рамку:
+
+```kotlin
+docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " +
+        "do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut " +
+        "aliquip ex ea commodo consequat.\n" +
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore " +
+        "eu fugiat nulla pariatur.")
+docView.document[0].borderStyle
+        .setPadding(Size.dp(8f))
+        .setBorder(
+                Border.dp(8f, Color.rgb(0xDC3023)),
+                Border.dp(8f, Color.rgb(0x22A7F0)),
+                Border.dp(8f, Color.rgb(0x26C281)),
+                Border.dp(8f, Color.rgb(0x9B59B6)))
+        .setMargin(Size.dp(8f))
+        .setBackgroundColor(Color.argb(0.1f, 0xDC3023))
+docView.document[1].borderStyle
+        .setPadding(Size.dp(8f))
+        .setBorder(
+                null,
+                null,
+                null,
+                Border.dp(8f, Color.rgb(0x22A7F0)))
+        .setMargin(Size.dp(8f))
+        .setBackgroundColor(Color.argb(0.1f, 0x22A7F0))
+docView.document[2].borderStyle
+        .setPadding(Size.dp(8f))
+        .setBorder(
+                Border.dp(8f, Color.TRANSPARENT),
+                Border.dp(8f, Color.TRANSPARENT),
+                Border.dp(8f, Color.TRANSPARENT),
+                Border.dp(8f, Color.rgb(0x22A7F0)))
+        .setMargin(Size.dp(8f))
+        .setBackgroundColor(Color.argb(0.1f, 0x22A7F0))
+
+docView.document.borderStyle
+        .setPadding(Size.dp(4f))
+        .setBorder(Border.px(1.0f, Color.BLACK))
+        .setMargin(Size.dp(4f))
+```
+
+![screenshot_8.png](docs/screenshot_8.png)
