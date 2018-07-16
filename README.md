@@ -1,8 +1,12 @@
 # DocumentView
 
-DocumentView это Kotlin-виджет для Android для вывода отформатированного текста. Аналог [TextView](https://developer.android.com/reference/android/widget/TextView) из Android SDK с его [Spannable](https://developer.android.com/reference/android/text/Spannable), но с более широкими (в планах!) возможностями в части форматирования текста.
+`DocumentView` это Kotlin-виджет для Android для вывода отформатированного текста. Аналог [TextView](https://developer.android.com/reference/android/widget/TextView) из Android SDK с его [Spannable](https://developer.android.com/reference/android/text/Spannable), но с более широкими (в планах!) возможностями в части форматирования текста.
 
 Работа только начата. Пока доступно только самое простое форматирование текста, но уже есть выравнивание по ширине (justification) и обработка мягких переносов.
+
+[document]:https://github.com/vi-k/kotlin-utils/wiki/document
+[html]:https://github.com/vi-k/kotlin-utils/wiki/html
+[htmldocument]:https://github.com/vi-k/kotlin-utils/wiki/htmldocument
 
 ## Содержание
 - [Простой пример](#Простой-пример)
@@ -48,9 +52,9 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 ![screenshot_1.png](docs/screenshot_1.png)
 
-Виджет содержит внутри себя объект платформонезависимого класса `[Document]`, который хранит в себе форматируемый документ. С ним мы и работаем, добавляя участки форматирования. Класс Span хранит в себе стиль знаков, начало и конец форматирования.
+Виджет содержит внутри себя объект платформонезависимого класса `Document` ([wiki][document]), который хранит в себе форматируемый документ. С ним мы и работаем, добавляя участки форматирования. Класс Span хранит в себе стиль знаков, начало и конец форматирования.
 
-Не всегда удобно отсчитывать количество символов для создания участков, для быстрого форматирования проще прибегнуть к нумерации слов. Функция `addWordSpan()` принимает на вход первым параметром номер слова (нумерация начинается с 1). Вторым параметром может указано количество слов, на которые должно распространиться форматирование.
+Не всегда удобно отсчитывать количество символов для создания участков, для быстрого форматирования проще прибегнуть к нумерации слов. Функция `addWordSpan()` принимает на вход первым параметром номер слова (нумерация начинается с 1). Вторым параметром можно указать количество слов, на которые надо распространить форматирование.
 
 ```kotlin
 docView.document
@@ -84,7 +88,9 @@ docView.document
 
 ![screenshot_2_2.png](docs/screenshot_2_2.png)
 
-Это были примеры прямого форматирования документа. Возможны и другие. Смотрите, например, [HtmlDocument].
+Если в `addWordSpan()` вместо количества слов указано отрицательное значение, то правой границей участка станет конец абзаца.
+
+Класс `Document` является основой для создания классов-наследников, которые будут конвертировать исходный текст в каком-либо формате (HTML, Markdown и т.п.) во внутреннюю стуктуру `Document`. Для конвертации HTML есть модуль [htmldocument].
 
 ## Абзацы
 
@@ -157,7 +163,7 @@ docView.document[1].characterStyle.font = "serif2"
 
 ![screenshot_5.png](docs/screenshot_5.png)
 
-Чтобы DocumentView в нужные моменты мог задействовать нужные шрифты, при создании шрифта к основному названию надо добавить соответствующий постфикс: `:bold`, `:italic`, `:bold_italic`
+Чтобы `DocumentView` в нужные моменты мог задействовать нужные шрифты, при создании шрифта к основному названию надо добавить соответствующий постфикс: `:bold`, `:italic`, `:bold_italic`
 
 ```kotlin
 docView.fontList["serif2:bold"] = Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
@@ -167,7 +173,7 @@ docView.fontList["serif2:bold_italic"] = Font(Typeface.create(Typeface.SERIF, Ty
 
 ![screenshot_5_2.png](docs/screenshot_5_2.png)
 
-Если проект использует несколько DocumentView, то удобнее создать один список шрифтов и использовать его для всех создаваемых виджетов:
+Если проект использует несколько `DocumentView`, то удобнее создать один список шрифтов и использовать его для всех создаваемых виджетов:
 
 ```kotlin
 val fontList = FontList()
@@ -188,39 +194,29 @@ docView.document
 
 ![screenshot_5_3.png](docs/screenshot_5_3.png)
 
-## Рамки
+## Рамки и отступы
 
-Настраиваем параметры по-умолчанию:
+Абзац можно оформить рамкой и отступами:
+
 ```kotlin
-docView.characterStyle.font = "sans_serif"
-docView.characterStyle.size = Size.dp(16f)
-docView.paragraphStyle.firstLeftIndent = Size.dp(32f)
+docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n" +
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")
+docView.document[0].blockStyle
+        .setPadding(Size.dp(8f))
+        .setBorder(Border.dp(1f, Color.rgb(0xDC3023)))
+        .setMargin(Size.dp(8f))
+        .setBackgroundColor(Color.argb(0.1f, 0xDC3023))
+docView.document[1].blockStyle
+        .setPadding(Size.dp(8f))
+        .setBorder(Border.dp(1f, Color.rgb(0x22A7F0)))
+        .setMargin(Size.dp(8f))
+        .backgroundColor = Color.argb(0.1f, 0x22A7F0)
+docView.document[2].blockStyle
+        .setPadding(Size.dp(8f))
+        .setBorder(Border.dp(1f, Color.rgb(0x26C281)))
+        .setMargin(Size.dp(8f))
+        .backgroundColor = Color.argb(0.1f, 0x26C281)
 ```
 
-Устанавливаем шрифт по-умолчанию, базовый размер шрифта и отступ для первой строки. Стили characterStyle и paragraphStyle описаны в документации к [Document].
-
-Создаём объект класса [Document], отвечающий за форматирование документа. В данном случае используем уже готовый класс преобразователь из HTML в [Document].
-```kotlin
-val document = SimpleHtmlDocument()
-docView.document = document
-```
-
-[DocumentView] не связан напрямую с HTML. Поэтому в этом месте может оказаться и какой-нибудь другой класс-преобразователь. Например, (в каком-нибудь будущем) PlainTextDocument и MarkdownDocument.
-
-Устанавливаем отступы от краёв:
-```kotlin
-document.blockStyle.setPadding(Size.dp(4f))
-```
-
-Отступы можно сделать и обычным способом через свойства View `paddingLeft`, `paddingTop` и т.п., но с той разницей, что в этом случае значение будет указываться в пикселях устройства, в то время как blockStyle принимает значение в пикселях, не зависящих от устройства (device-independent pixels). Также можно указать значение, пропорциональное или размеру шрифта (`Size.em()`) или ширине виджета (`Size.percent()` или `Size.ratio()`).
-
-Подробное описание возможностей классов смотрите в документации:
-1) [DocumentView].
-2) [Document].
-3) [Html].
-4) [HtmlDocument].
-
-[DocumentView]:https://github.com/vi-k/android-documentview/wiki
-[Document]:https://github.com/vi-k/kotlin-utils/wiki/document
-[Html]:https://github.com/vi-k/kotlin-utils/wiki/html
-[HtmlDocument]:https://github.com/vi-k/kotlin-utils/wiki/htmldocument
+![screenshot_6.png](docs/screenshot_6.png)
