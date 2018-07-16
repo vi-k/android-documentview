@@ -15,7 +15,8 @@ import ru.vik.utils.document.*
 import kotlin.math.*
 
 open class DocumentView(context: Context,
-        attrs: AttributeSet?, defStyleAttr: Int) : View(context, attrs, defStyleAttr) {
+    attrs: AttributeSet?, defStyleAttr: Int
+) : View(context, attrs, defStyleAttr) {
 
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
@@ -42,19 +43,20 @@ open class DocumentView(context: Context,
     internal val paint = Paint()
 
     class Segment(
-            var isFirst: Boolean,
-            val spaces: Int,
-            var start: Int,
-            val end: Int,
-            val characterStyle: CharacterStyle,
-            val font: Font,
-            val ascent: Float,
-            val descent: Float,
-            var spacesWidth: Float,
-            var textWidth: Float,
-            val hyphenWidth: Float,
-            val eol: Boolean,
-            var baseline: Float = 0f)
+        var isFirst: Boolean,
+        val spaces: Int,
+        var start: Int,
+        val end: Int,
+        val characterStyle: CharacterStyle,
+        val font: Font,
+        val ascent: Float,
+        val descent: Float,
+        var spacesWidth: Float,
+        var textWidth: Float,
+        val hyphenWidth: Float,
+        val eol: Boolean,
+        var baseline: Float = 0f
+    )
 
     private var segments = mutableListOf<Segment>()
 
@@ -110,15 +112,18 @@ open class DocumentView(context: Context,
      * @param clipRight Границы секции. Нижняя граница вычисляется.
      */
     open fun drawSection(canvas: Canvas?, section: Section,
-            parentParagraphStyle: ParagraphStyle,
-            parentCharacterStyle: CharacterStyle,
-            clipTop: Float, clipLeft: Float, clipRight: Float): Float {
+        parentParagraphStyle: ParagraphStyle,
+        parentCharacterStyle: CharacterStyle,
+        clipTop: Float, clipLeft: Float, clipRight: Float
+    ): Float {
 
-        val paragraphStyle =
-                parentParagraphStyle.clone().attach(section.paragraphStyle)
-        val characterStyle =
-                parentCharacterStyle.clone().attach(section.characterStyle)
-        val blockStyle = section.blockStyle
+        val borderStyle = section.borderStyle
+        val paragraphStyle = parentParagraphStyle
+                .clone()
+                .attach(section.paragraphStyle)
+        val characterStyle = parentCharacterStyle
+                .clone()
+                .attach(section.characterStyle)
 
         // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
         // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
@@ -129,10 +134,10 @@ open class DocumentView(context: Context,
         // Границы абзаца (нижней границы нет, мы её вычисляем)
         val (sectionTop, sectionLeft, sectionRight) =
                 getInnerBoundary(clipTop, clipLeft, clipRight,
-                        blockStyle, fontSize, parentWidth)
+                        borderStyle, fontSize, parentWidth)
         var sectionBottom = sectionTop
 
-        if (canvas == null || blockStyle.needForDraw()) {
+        if (canvas == null || borderStyle.needForDraw()) {
             // Вычисление размеров, если это необходимо
 
             for (item in section.paragraphs) {
@@ -145,7 +150,7 @@ open class DocumentView(context: Context,
             }
 
             if (canvas != null) {
-                drawBorder(canvas, blockStyle, sectionTop, sectionLeft,
+                drawBorder(canvas, borderStyle, sectionTop, sectionLeft,
                         sectionBottom, sectionRight, fontSize, parentWidth)
             }
         }
@@ -166,9 +171,9 @@ open class DocumentView(context: Context,
         }
 
         return sectionBottom +
-                Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth) +
-                Size.toPixels(blockStyle.borderBottom, this.density, fontSize) +
-                Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.paddingBottom, this.density, fontSize, parentWidth) +
+                Size.toPixels(borderStyle.borderBottom, this.density, fontSize) +
+                Size.toPixels(borderStyle.marginBottom, this.density, fontSize, parentWidth)
     }
 
     /**
@@ -183,15 +188,18 @@ open class DocumentView(context: Context,
      * @param clipRight Границы секции. Нижняя граница вычисляется.
      */
     open fun drawParagraph(canvas: Canvas?, paragraph: Paragraph,
-            parentParagraphStyle: ParagraphStyle,
-            parentCharacterStyle: CharacterStyle,
-            clipTop: Float, clipLeft: Float, clipRight: Float): Float {
+        parentParagraphStyle: ParagraphStyle,
+        parentCharacterStyle: CharacterStyle,
+        clipTop: Float, clipLeft: Float, clipRight: Float
+    ): Float {
 
-        val paragraphStyle =
-                parentParagraphStyle.clone().attach(paragraph.paragraphStyle)
-        val characterStyle =
-                parentCharacterStyle.clone().attach(paragraph.characterStyle)
-        val blockStyle = paragraph.blockStyle
+        val borderStyle = paragraph.borderStyle
+        val paragraphStyle = parentParagraphStyle
+                .clone()
+                .attach(paragraph.paragraphStyle)
+        val characterStyle = parentCharacterStyle
+                .clone()
+                .attach(paragraph.characterStyle)
 
         // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
         // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
@@ -202,8 +210,9 @@ open class DocumentView(context: Context,
         // Границы абзаца (нижней границы нет, мы её вычисляем)
         val (paragraphTop, paragraphLeft, paragraphRight) =
                 getInnerBoundary(clipTop, clipLeft, clipRight,
-                        blockStyle, fontSize, parentWidth)
-        var paragraphBottom = paragraphTop
+                        borderStyle, fontSize, parentWidth)
+        var paragraphBottom = paragraphTop + Size.toPixels(paragraphStyle.topIndent,
+                this.density, fontSize, parentWidth)
 
         if (paragraph.text.isNotEmpty() || this.drawEmptyParagraph) {
             // Вычисляем размеры абзаца, разбиваем абзац на строки
@@ -478,7 +487,7 @@ open class DocumentView(context: Context,
 
             // Отрисовка
             if (canvas != null) {
-                drawBorder(canvas, blockStyle, paragraphTop, paragraphLeft,
+                drawBorder(canvas, borderStyle, paragraphTop, paragraphLeft,
                         paragraphBottom, paragraphRight, fontSize, parentWidth)
 
                 isFirstLine = true
@@ -594,13 +603,15 @@ open class DocumentView(context: Context,
         }
 
         return paragraphBottom +
-                Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth) +
-                Size.toPixels(blockStyle.borderBottom, this.density, fontSize) +
-                Size.toPixels(blockStyle.marginBottom, this.density, fontSize, parentWidth)
+                Size.toPixels(paragraphStyle.bottomIndent, this.density, fontSize, parentWidth) +
+                Size.toPixels(borderStyle.paddingBottom, this.density, fontSize, parentWidth) +
+                Size.toPixels(borderStyle.borderBottom, this.density, fontSize) +
+                Size.toPixels(borderStyle.marginBottom, this.density, fontSize, parentWidth)
     }
 
     private fun parseNextSegment(parser: StringParser, paragraph: Paragraph,
-            characterStyle: CharacterStyle): CharacterStyle {
+        characterStyle: CharacterStyle
+    ): CharacterStyle {
         parser.start()
 
         val start = parser.start
@@ -625,7 +636,8 @@ open class DocumentView(context: Context,
      * Установка параметров textPaint из стиля characterStyle.
      */
     private fun characterStyle2TextPaint(characterStyle: CharacterStyle,
-            textPaint: TextPaint): Pair<Font, Paint.FontMetrics> {
+        textPaint: TextPaint
+    ): Pair<Font, Paint.FontMetrics> {
 
         textPaint.reset()
         textPaint.isAntiAlias = true
@@ -652,7 +664,7 @@ open class DocumentView(context: Context,
      * Рисование рамки с учётом разных размеров и цветов каждой из сторон.
      *
      * @param canvas Канвас.
-     * @param blockStyle Параметры рамки и размеры отступов.
+     * @param borderStyle Параметры рамки и размеры отступов.
      * @param top
      * @param left
      * @param bottom
@@ -661,81 +673,82 @@ open class DocumentView(context: Context,
      * @param parentWidth Размер шрифта и родителя для вычисления отступов и размеров рамки,
      * указанных в em и ratio.
      */
-    internal fun drawBorder(canvas: Canvas, blockStyle: BlockStyle,
-            top: Float, left: Float, bottom: Float, right: Float,
-            fontSize: Float, parentWidth: Float) {
+    internal fun drawBorder(canvas: Canvas, borderStyle: BorderStyle,
+        top: Float, left: Float, bottom: Float, right: Float,
+        fontSize: Float, parentWidth: Float
+    ) {
 
         val inTop = top -
-                Size.toPixels(blockStyle.paddingTop, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.paddingTop, this.density, fontSize, parentWidth)
         val inLeft = left -
-                Size.toPixels(blockStyle.paddingLeft, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.paddingLeft, this.density, fontSize, parentWidth)
         val inBottom = bottom +
-                Size.toPixels(blockStyle.paddingBottom, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.paddingBottom, this.density, fontSize, parentWidth)
         val inRight = right +
-                Size.toPixels(blockStyle.paddingRight, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.paddingRight, this.density, fontSize, parentWidth)
         val outTop = inTop -
-                Size.toPixels(blockStyle.borderTop, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.borderTop, this.density, fontSize, parentWidth)
         val outLeft = inLeft -
-                Size.toPixels(blockStyle.borderLeft, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.borderLeft, this.density, fontSize, parentWidth)
         val outBottom = inBottom +
-                Size.toPixels(blockStyle.borderBottom, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.borderBottom, this.density, fontSize, parentWidth)
         val outRight = inRight +
-                Size.toPixels(blockStyle.borderRight, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.borderRight, this.density, fontSize, parentWidth)
 
         // Фон
-        if (blockStyle.backgroundColor != 0) {
-            this.paint.color = blockStyle.backgroundColor
+        if (borderStyle.backgroundColor != 0) {
+            this.paint.color = borderStyle.backgroundColor
             canvas.drawRect(outLeft, outTop, outRight, outBottom, this.paint)
         }
 
         var t = outTop
         var b = outBottom
-        val l = if (Size.isEmpty(blockStyle.borderLeft)) outLeft else ceil(inLeft)
-        val r = if (Size.isEmpty(blockStyle.borderRight)) outRight else floor(inRight)
+        val l = if (Size.isEmpty(borderStyle.borderLeft)) outLeft else ceil(inLeft)
+        val r = if (Size.isEmpty(borderStyle.borderRight)) outRight else floor(inRight)
 
         // Рамка
-        if (Size.isNotEmpty(blockStyle.borderTop)) {
+        if (Size.isNotEmpty(borderStyle.borderTop)) {
             t = ceil(inTop)
 
-            if (Size.isNotEmpty(blockStyle.borderLeft)) {
+            if (Size.isNotEmpty(borderStyle.borderLeft)) {
                 drawBorderCorner(canvas, this.paint, outLeft, outTop, inLeft, inTop,
-                        blockStyle.borderLeft!!.color, blockStyle.borderTop!!.color)
+                        borderStyle.borderLeft!!.color, borderStyle.borderTop!!.color)
             }
 
-            if (Size.isNotEmpty(blockStyle.borderRight)) {
+            if (Size.isNotEmpty(borderStyle.borderRight)) {
                 drawBorderCorner(canvas, this.paint, outRight, outTop, inRight, inTop,
-                        blockStyle.borderRight!!.color, blockStyle.borderTop!!.color)
+                        borderStyle.borderRight!!.color, borderStyle.borderTop!!.color)
             }
 
             drawBorderHLine(canvas, this.paint, l, r, outTop, inTop,
-                    blockStyle.borderTop!!.color)
+                    borderStyle.borderTop!!.color)
         }
 
-        if (Size.isNotEmpty(blockStyle.borderBottom)) {
+        if (Size.isNotEmpty(borderStyle.borderBottom)) {
             b = floor(inBottom)
 
-            if (Size.isNotEmpty(blockStyle.borderLeft)) {
+            if (Size.isNotEmpty(borderStyle.borderLeft)) {
                 drawBorderCorner(canvas, this.paint, outLeft, outBottom, inLeft, inBottom,
-                        blockStyle.borderRight!!.color, blockStyle.borderBottom!!.color)
+                        borderStyle.borderRight!!.color, borderStyle.borderBottom!!.color)
             }
 
-            if (Size.isNotEmpty(blockStyle.borderRight)) {
+            if (Size.isNotEmpty(borderStyle.borderRight)) {
                 drawBorderCorner(canvas, this.paint, outRight, outBottom, inRight, inBottom,
-                        blockStyle.borderRight!!.color, blockStyle.borderBottom!!.color)
+                        borderStyle.borderRight!!.color, borderStyle.borderBottom!!.color)
             }
 
             drawBorderHLine(canvas, this.paint, l, r, inBottom, outBottom,
-                    blockStyle.borderBottom!!.color)
+                    borderStyle.borderBottom!!.color)
         }
 
-        if (Size.isNotEmpty(blockStyle.borderLeft)) {
+        if (Size.isNotEmpty(borderStyle.borderLeft)) {
             drawBorderVLine(canvas, this.paint, t, b, outLeft, inLeft,
-                    blockStyle.borderLeft!!.color)
+                    borderStyle.borderLeft!!.color)
         }
 
-        if (Size.isNotEmpty(blockStyle.borderRight)) {
+        if (Size.isNotEmpty(borderStyle.borderRight)) {
             drawBorderVLine(canvas, this.paint, t, b, inRight, outRight,
-                    blockStyle.borderRight!!.color)
+                    borderStyle.borderRight!!.color)
         }
     }
 
@@ -800,8 +813,9 @@ open class DocumentView(context: Context,
      * Рисование текста с возможностью рисования базовой линии.
      */
     internal fun drawText(canvas: Canvas, text: CharSequence,
-            x: Float, y: Float, paint: Paint,
-            drawBaseline: Boolean = false): Float {
+        x: Float, y: Float, paint: Paint,
+        drawBaseline: Boolean = false
+    ): Float {
 
         return drawText(canvas, text, 0, text.length, x, y, paint, drawBaseline)
     }
@@ -810,7 +824,8 @@ open class DocumentView(context: Context,
      * Рисование текста с возможностью рисования базовой линии.
      */
     internal fun drawText(canvas: Canvas, text: CharSequence, start: Int, end: Int,
-            x: Float, y: Float, paint: Paint, drawBaseline: Boolean = false): Float {
+        x: Float, y: Float, paint: Paint, drawBaseline: Boolean = false
+    ): Float {
 
         val width = paint.measureText(text, start, end)
 
@@ -883,9 +898,10 @@ open class DocumentView(context: Context,
      * @param horizontalColor Цвет горизонтальной линии рамки.
      */
     private fun drawBorderCorner(canvas: Canvas, paint: Paint,
-            outX: Float, outY: Float,
-            inX: Float, inY: Float,
-            verticalColor: Int, horizontalColor: Int) {
+        outX: Float, outY: Float,
+        inX: Float, inY: Float,
+        verticalColor: Int, horizontalColor: Int
+    ) {
 
         // Для удобства расчётов будем всегда двигаться вправо и вниз,
         // переводя в нужное направление только при выводе
@@ -1006,9 +1022,10 @@ open class DocumentView(context: Context,
      * @param color Цвет линии.
      */
     private fun drawBorderHLine(canvas: Canvas, paint: Paint,
-            left: Float, right: Float,
-            top: Float, bottom: Float,
-            color: Int) {
+        left: Float, right: Float,
+        top: Float, bottom: Float,
+        color: Int
+    ) {
 
         // Координаты для линии из "чистого" цвета
         val l = ceil(left)
@@ -1063,9 +1080,10 @@ open class DocumentView(context: Context,
      * @param color Цвет линии.
      */
     private fun drawBorderVLine(canvas: Canvas, paint: Paint,
-            top: Float, bottom: Float,
-            left: Float, right: Float,
-            color: Int) {
+        top: Float, bottom: Float,
+        left: Float, right: Float,
+        color: Int
+    ) {
 
         // Координаты для линии из "чистого" цвета
         val t = ceil(top)
@@ -1110,21 +1128,22 @@ open class DocumentView(context: Context,
      * Вычисление внутренних границ секций и параграфов.
      */
     private fun getInnerBoundary(clipTop: Float, clipLeft: Float, clipRight: Float,
-            blockStyle: BlockStyle, fontSize: Float, parentWidth: Float)
+        borderStyle: BorderStyle, fontSize: Float, parentWidth: Float
+    )
             : Triple<Float, Float, Float> {
 
         val top = clipTop +
-                Size.toPixels(blockStyle.marginTop, this.density, fontSize, parentWidth) +
-                Size.toPixels(blockStyle.borderTop, this.density, fontSize) +
-                Size.toPixels(blockStyle.paddingTop, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.marginTop, this.density, fontSize, parentWidth) +
+                Size.toPixels(borderStyle.borderTop, this.density, fontSize) +
+                Size.toPixels(borderStyle.paddingTop, this.density, fontSize, parentWidth)
         val left = clipLeft +
-                Size.toPixels(blockStyle.marginLeft, this.density, fontSize, parentWidth) +
-                Size.toPixels(blockStyle.borderLeft, this.density, fontSize) +
-                Size.toPixels(blockStyle.paddingLeft, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.marginLeft, this.density, fontSize, parentWidth) +
+                Size.toPixels(borderStyle.borderLeft, this.density, fontSize) +
+                Size.toPixels(borderStyle.paddingLeft, this.density, fontSize, parentWidth)
         val right = clipRight -
-                Size.toPixels(blockStyle.marginRight, this.density, fontSize, parentWidth) -
-                Size.toPixels(blockStyle.borderRight, this.density, fontSize) -
-                Size.toPixels(blockStyle.paddingRight, this.density, fontSize, parentWidth)
+                Size.toPixels(borderStyle.marginRight, this.density, fontSize, parentWidth) -
+                Size.toPixels(borderStyle.borderRight, this.density, fontSize) -
+                Size.toPixels(borderStyle.paddingRight, this.density, fontSize, parentWidth)
 
         return Triple(top, left, right)
     }
