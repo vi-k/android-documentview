@@ -264,7 +264,6 @@ docView.document[2].borderStyle
 docView.document.borderStyle
         .setPadding(Size.dp(4f))
         .setBorder(Border.px(1.0f, Color.BLACK))
-        .setMargin(Size.dp(4f))
 ```
 
 ![screenshot_8.png](docs/screenshot_8.png)
