@@ -230,20 +230,15 @@ docView.document[2].borderStyle
 ```kotlin
 docView.document[0].borderStyle
         .setPadding(Size.dp(8f))
-        .setBorder(
-                Border.dp(8f, Color.rgb(0xDC3023)),
-                Border.dp(8f, Color.rgb(0x22A7F0)),
-                Border.dp(8f, Color.rgb(0x26C281)),
-                Border.dp(8f, Color.rgb(0x9B59B6)))
+        .setBorderTop(Border.dp(8f, Color.rgb(0xDC3023)))
+        .setBorderRight(Border.dp(8f, Color.rgb(0x22A7F0)))
+        .setBorderBottom(Border.dp(8f, Color.rgb(0x26C281)))
+        .setBorderLeft(Border.dp(8f, Color.rgb(0x9B59B6)))
         .setMargin(Size.dp(4f))
         .setBackgroundColor(Color.argb(0.2f, 0xDC3023))
 docView.document[1].borderStyle
         .setPadding(Size.dp(8f))
-        .setBorder(
-                null,
-                null,
-                null,
-                Border.dp(8f, Color.rgb(0x22A7F0)))
+        .setBorderLeft(Border.dp(8f, Color.rgb(0x22A7F0)))
         .setMargin(Size.dp(4f))
         .setBackgroundColor(Color.argb(0.2f, 0x22A7F0))
 docView.document[2].borderStyle
@@ -261,7 +256,55 @@ docView.document.borderStyle
         .setBackgroundColor(Color.argb(0.1f, 0xF9690E))
 ```
 
-![screenshot_8.png](docs/screenshot_8.png)
+![screenshot_7_2.png](docs/screenshot_7_2.png)
 
 ## Оформление абзацев
 
+Что есть: отступы между абзацами сверху (`topIndent`) и снизу (`bottomIndent`), выравнивание (`align`) по левому краю, по правому, по ширине и относительно центра, отступы слева (`leftIndent`) и справа (`rightIndent`), отдельное выравнивание и отступ для первой строки (`firstAlign`, `firstLeftIndent`, `firstRightIndent`), отдельное выравнивание для последней строки (`lastAlign`).
+
+```kotlin
+docView.document.setText("Lorem ipsum\n" +
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n" +
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n" +
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+
+docView.document.characterStyle
+        .setSize(Size.percent(120f))
+docView.document.paragraphStyle
+        .setTopIndent(Size.dp(8f)) // Отступ сверху, общий для всех абзацев
+
+docView.document[0].characterStyle
+        .setSize(Size.em(2f))
+docView.document[0].paragraphStyle
+        .setAlign(ParagraphStyle.Align.CENTER)
+        .setTopIndent(Size.dp(0f))
+docView.document[0].borderStyle
+        .setBorderBottom(Border.dp(1f, Color.LTGRAY))
+        .setMarginBottom(Size.dp(4f))
+
+docView.document[1].paragraphStyle
+        .setAlign(ParagraphStyle.Align.LEFT)
+        .setFirstLeftIndent(Size.em(2f))
+docView.document[2].paragraphStyle
+        .setAlign(ParagraphStyle.Align.RIGHT)
+docView.document[3].paragraphStyle
+        .setAlign(ParagraphStyle.Align.JUSTIFY)
+docView.document[4].paragraphStyle
+        .setAlign(ParagraphStyle.Align.JUSTIFY)
+        .setLastAlign(ParagraphStyle.Align.CENTER)
+```
+
+![screenshot_8.png](docs/screenshot_8.png)
+
+И тоже самое для строки, имеющей мягкие переносы:
+
+```kotlin
+docView.document.setText("Lorem ipsum\n" +
+        "Lo\u00ADrem ip\u00ADsum do\u00ADlor sit amet, con\u00ADsec\u00ADte\u00ADtur adi\u00ADpis\u00ADcing elit, sed do eius\u00ADmod tem\u00ADpor in\u00ADci\u00ADdi\u00ADdunt ut la\u00ADbo\u00ADre et do\u00ADlo\u00ADre mag\u00ADna ali\u00ADqua.\n" +
+        "Ut enim ad mi\u00ADnim ve\u00ADniam, qu\u00ADis nos\u00ADt\u00ADrud exer\u00ADci\u00ADta\u00ADtion ul\u00ADlam\u00ADco la\u00ADbo\u00ADris ni\u00ADsi ut ali\u00ADqu\u00ADip ex ea com\u00ADmo\u00ADdo con\u00ADse\u00ADquat.\n" +
+        "Duis aute iru\u00ADre do\u00ADlor in rep\u00ADre\u00ADhen\u00ADde\u00ADrit in vo\u00ADlup\u00ADta\u00ADte ve\u00ADlit es\u00ADse cil\u00ADlum do\u00ADlo\u00ADre eu fu\u00ADgi\u00ADat nul\u00ADla pa\u00ADria\u00ADtur.\n" +
+        "Ex\u00ADcep\u00ADte\u00ADur sint oc\u00ADcae\u00ADcat cu\u00ADpi\u00ADda\u00ADtat non pro\u00ADi\u00ADdent, sunt in cul\u00ADpa qui of\u00ADfi\u00ADcia de\u00ADse\u00ADrunt mol\u00ADlit anim id est la\u00ADbo\u00ADrum.")
+```
+
+![screenshot_8_2.png](docs/screenshot_8_2.png)
