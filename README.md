@@ -15,6 +15,8 @@
 - [Шрифты](#Шрифты)
 - [Рамки](#Рамки)
 - [Оформление абзацев](#Оформление-абзацев)
+- [Коррекция шрифтов](#Коррекция-шрифтов)
+- [Переносы строк](#Переносы-строк)
 
 ## Простой пример
 
@@ -260,7 +262,7 @@ docView.document.borderStyle
 
 ## Оформление абзацев
 
-Что есть: отступы между абзацами сверху (`topIndent`) и снизу (`bottomIndent`), выравнивание (`align`) по левому краю, по правому, по ширине и относительно центра, отступы слева (`leftIndent`) и справа (`rightIndent`), отдельное выравнивание и отступ для первой строки (`firstAlign`, `firstLeftIndent`, `firstRightIndent`), отдельное выравнивание для последней строки (`lastAlign`).
+Для оформления абзацев есть: отступы сверху и снизу (`topIndent`, `bottomIndent`), выравнивание (`align`) по левому краю, по правому, по ширине и относительно центра, отступы слева и справа (`leftIndent`, `rightIndent`), отдельное выравнивание и отступ для первой строки (`firstAlign`, `firstLeftIndent`, `firstRightIndent`), отдельное выравнивание для последней строки (`lastAlign`).
 
 ```kotlin
 docView.document.setText("Lorem ipsum\n" +
@@ -297,19 +299,6 @@ docView.document[4].paragraphStyle
 
 ![screenshot_8.png](docs/screenshot_8.png)
 
-И тоже самое для строки, имеющей мягкие переносы (автоматические переносы пока не реализованы):
-
-```kotlin
-val string = "Lorem ipsum\n" +
-        "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
-        "Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.\n" +
-        "Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.\n" +
-        "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui of~fi~cia de~se~runt mol~lit anim id est la~bo~rum."
-docView.document.setText(string.replace('~', '\u00AD'))
-```
-
-![screenshot_8_2.png](docs/screenshot_8_2.png)
-
 Пример оформления стихотворения:
 
 ```kotlin
@@ -329,6 +318,69 @@ docView.document.paragraphStyle
         .setAlign(ParagraphStyle.Align.RIGHT)
 ```
 
-![screenshot_8_3.png](docs/screenshot_8_3.png)
+![screenshot_8_2.png](docs/screenshot_8_2.png)
 
-Заодно в этом примере используется символ разрыва строки '\u2028' без разделения абзацев.
+Заодно в этом примере используется символ разрыва строки `'\u2028'` без разделения абзацев.
+
+## Коррекция шрифтов
+
+При совместном использовании нескольких шрифтов в одном тексте может возникнуть проблема соотношения реальных размеров шрифтов для одного и того же кегля:
+
+```kotlin
+docView.fontList.createFamily("serif", Font(Typeface.SERIF))
+docView.fontList["ponomar"] = Font(
+        typeface = Typeface.createFromAsset(this.assets, "fonts/PonomarUnicode.ttf")!!)
+
+docView.document.setText("В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ")
+docView.document.addWordSpan(1, 4, CharacterStyle(font = "serif"))
+docView.document.addWordSpan(5, -1, CharacterStyle(font = "ponomar"))
+```
+
+![screenshot_9.png](docs/screenshot_9.png)
+
+Можно, конечно, в каждом случае вручую приводить нужный текст к требуемому размеру, а можно скорректировать весть шрифт ещё на этапе его загрузки, задав ему масштаб:
+
+```kotlin
+docView.fontList["ponomar"] = Font(
+        typeface = Typeface.createFromAsset(this.assets, "fonts/PonomarUnicode.ttf")!!,
+        scale = 1.2f)
+```
+
+![screenshot_9_2.png](docs/screenshot_9_2.png)
+
+Следующей проблемой может оказаться, как в данном случае, слишком большое или слишком маленькое расстояние между строками (в этом случае старославянский шрифт требует больше места из-за обилия в языке диакритических знаков). Это тоже можно исправить, указав нужные множители для коррекции верхнего и нижнего отступов шрифта (для `ascent` и `descent`): 
+
+```kotlin
+docView.fontList["ponomar"] = Font(
+        typeface = Typeface.createFromAsset(this.assets, "fonts/PonomarUnicode.ttf")!!,
+        ascentRatio = 0.8f,
+        descentRatio = 0.8f,
+        scale = 1.2f)
+```
+
+![screenshot_9_3.png](docs/screenshot_9_3.png)
+
+## Переносы слов
+
+Автоматические разбивка слов для переносов по слогам пока не реализована. Но можно задействовать мягкие переносы (`'\u00AD'`), вручную указав их в тексте. Пример из [Оформления абзацев](#Оформление-абзацев), но с мягкими переносами:
+
+```kotlin
+// Мягкие переносы ля наглядности обозначаем наком `'~'`, затем их переводим в `'\u00AD'`
+val string = "Lorem ipsum\n" +
+        "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
+        "Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.\n" +
+        "Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.\n" +
+        "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui of~fi~cia de~se~runt mol~lit anim id est la~bo~rum."
+docView.document.setText(string.replace('~', '\u00AD'))
+```
+
+![screenshot_10.png](docs/screenshot_10.png)
+
+В некоторых языках (например, в старославянском) используется символ переноса, отличный от стандартного:
+
+```kotlin
+docView.fontList["ponomar"] = Font(
+        typeface = Typeface.createFromAsset(this.assets, "fonts/PonomarUnicode.ttf")!!,
+        hyphen = '_')
+```
+
