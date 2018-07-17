@@ -14,6 +14,7 @@
 - [Абзацы](#Абзацы)
 - [Шрифты](#Шрифты)
 - [Рамки](#Рамки)
+- [Оформление абзацев][#Оформление_абзацев]
 
 ## Простой пример
 
@@ -227,12 +228,6 @@ docView.document[2].borderStyle
 Рамки богут быть разными. Сам документ тоже может иметь отдельную рамку:
 
 ```kotlin
-docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " +
-        "do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
-        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut " +
-        "aliquip ex ea commodo consequat.\n" +
-        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore " +
-        "eu fugiat nulla pariatur.")
 docView.document[0].borderStyle
         .setPadding(Size.dp(8f))
         .setBorder(
@@ -240,8 +235,8 @@ docView.document[0].borderStyle
                 Border.dp(8f, Color.rgb(0x22A7F0)),
                 Border.dp(8f, Color.rgb(0x26C281)),
                 Border.dp(8f, Color.rgb(0x9B59B6)))
-        .setMargin(Size.dp(8f))
-        .setBackgroundColor(Color.argb(0.1f, 0xDC3023))
+        .setMargin(Size.dp(4f))
+        .setBackgroundColor(Color.argb(0.2f, 0xDC3023))
 docView.document[1].borderStyle
         .setPadding(Size.dp(8f))
         .setBorder(
@@ -249,21 +244,24 @@ docView.document[1].borderStyle
                 null,
                 null,
                 Border.dp(8f, Color.rgb(0x22A7F0)))
-        .setMargin(Size.dp(8f))
-        .setBackgroundColor(Color.argb(0.1f, 0x22A7F0))
+        .setMargin(Size.dp(4f))
+        .setBackgroundColor(Color.argb(0.2f, 0x22A7F0))
 docView.document[2].borderStyle
         .setPadding(Size.dp(8f))
         .setBorder(
                 Border.dp(8f, Color.TRANSPARENT),
-                Border.dp(8f, Color.TRANSPARENT),
-                Border.dp(8f, Color.TRANSPARENT),
-                Border.dp(8f, Color.rgb(0x22A7F0)))
-        .setMargin(Size.dp(8f))
-        .setBackgroundColor(Color.argb(0.1f, 0x22A7F0))
+                Border.dp(8f, Color.rgb(0x26C281)))
+        .setMargin(Size.dp(4f))
+        .setBackgroundColor(Color.argb(0.2f, 0x26C281))
 
 docView.document.borderStyle
         .setPadding(Size.dp(4f))
-        .setBorder(Border.px(1.0f, Color.BLACK))
+        .setBorder(Border.dp(4.0f, Color.rgb(0xF9690E)))
+        .setMargin(Size.dp(4f))
+        .setBackgroundColor(Color.argb(0.1f, 0xF9690E))
 ```
 
 ![screenshot_8.png](docs/screenshot_8.png)
+
+## Оформление абзацев
+
