@@ -297,14 +297,15 @@ docView.document[4].paragraphStyle
 
 ![screenshot_8.png](docs/screenshot_8.png)
 
-И тоже самое для строки, имеющей мягкие переносы:
+И тоже самое для строки, имеющей мягкие переносы (автоматические переносы пока не реализованы):
 
 ```kotlin
-docView.document.setText("Lorem ipsum\n" +
-        "Lo\u00ADrem ip\u00ADsum do\u00ADlor sit amet, con\u00ADsec\u00ADte\u00ADtur adi\u00ADpis\u00ADcing elit, sed do eius\u00ADmod tem\u00ADpor in\u00ADci\u00ADdi\u00ADdunt ut la\u00ADbo\u00ADre et do\u00ADlo\u00ADre mag\u00ADna ali\u00ADqua.\n" +
-        "Ut enim ad mi\u00ADnim ve\u00ADniam, qu\u00ADis nos\u00ADt\u00ADrud exer\u00ADci\u00ADta\u00ADtion ul\u00ADlam\u00ADco la\u00ADbo\u00ADris ni\u00ADsi ut ali\u00ADqu\u00ADip ex ea com\u00ADmo\u00ADdo con\u00ADse\u00ADquat.\n" +
-        "Duis aute iru\u00ADre do\u00ADlor in rep\u00ADre\u00ADhen\u00ADde\u00ADrit in vo\u00ADlup\u00ADta\u00ADte ve\u00ADlit es\u00ADse cil\u00ADlum do\u00ADlo\u00ADre eu fu\u00ADgi\u00ADat nul\u00ADla pa\u00ADria\u00ADtur.\n" +
-        "Ex\u00ADcep\u00ADte\u00ADur sint oc\u00ADcae\u00ADcat cu\u00ADpi\u00ADda\u00ADtat non pro\u00ADi\u00ADdent, sunt in cul\u00ADpa qui of\u00ADfi\u00ADcia de\u00ADse\u00ADrunt mol\u00ADlit anim id est la\u00ADbo\u00ADrum.")
+val string = "Lorem ipsum\n" +
+        "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
+        "Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.\n" +
+        "Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.\n" +
+        "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui of~fi~cia de~se~runt mol~lit anim id est la~bo~rum."
+docView.document.setText(string.replace('~', '\u00AD'))
 ```
 
 ![screenshot_8_2.png](docs/screenshot_8_2.png)
