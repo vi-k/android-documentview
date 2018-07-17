@@ -365,7 +365,7 @@ docView.fontList["ponomar"] = Font(
 Автоматические разбивка слов для переносов по слогам пока не реализована. Но можно задействовать мягкие переносы (`'\u00AD'`), вручную указав их в тексте. Пример из [Оформления абзацев](#Оформление-абзацев), но с мягкими переносами:
 
 ```kotlin
-// Мягкие переносы ля наглядности обозначаем наком `'~'`, затем их переводим в `'\u00AD'`
+// Мягкие переносы ля наглядности обозначаем знаком '~', затем их переводим в '\u00AD'
 val string = "Lorem ipsum\n" +
         "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
         "Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.\n" +
