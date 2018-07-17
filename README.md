@@ -309,3 +309,26 @@ docView.document.setText(string.replace('~', '\u00AD'))
 ```
 
 ![screenshot_8_2.png](docs/screenshot_8_2.png)
+
+Пример оформления стихотворения:
+
+```kotlin
+docView.document.setText("Куда ещё тянется провод\u2028из гроба того?\n" +
+        "Нет, Сталин не умер. Считает он смерть поправимостью.\n" +
+        "Мы вынесли из мавзолея его.\n" +
+        "Но как из наследников Сталина\u2028Сталина вынести?")
+
+docView.document.characterStyle
+        .setFont("georgia")
+        .setItalic(true)
+
+docView.document.paragraphStyle
+        .setLeftIndent(Size.em(2f))
+        .setFirstLeftIndent(Size.em(-2f))
+        .setFirstAlign(ParagraphStyle.Align.LEFT)
+        .setAlign(ParagraphStyle.Align.RIGHT)
+```
+
+![screenshot_8_3.png](docs/screenshot_8_3.png)
+
+Заодно в этом примере используется символ разрыва строки \u2028 без разделения абзацев.
