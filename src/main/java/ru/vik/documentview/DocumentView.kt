@@ -21,7 +21,7 @@ open class DocumentView(context: Context,
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
 
-    enum class Baseline { NONE, INDENT, FULL }
+    enum class Baseline { NONE, INDENT, PARAGRAPH, VIEW }
 
     enum class GetFontType { BY_FULL_NAME, BY_SHORT_NAME, DEFAULT }
 
@@ -29,8 +29,6 @@ open class DocumentView(context: Context,
 
     var document = Document()
     var fontList = FontList()
-    var paragraphStyle = ParagraphStyle.default()
-    var characterStyle = CharacterStyle.default()
     var drawEmptyParagraph = false
 
     internal val density = this.context.resources.displayMetrics.density
@@ -91,11 +89,11 @@ open class DocumentView(context: Context,
      * Рисование View или вычисление необходимой высоты (при canvas == null).
      *
      * @param canvas Если null, то только вычисление высоты.
-     * @param width В OnMeasure() ещё не установлена ширина View, поэтому будущуюю ширину
+     * @param width В OnMeasure() ещё не установлена ширина View, поэтому будущую ширину
      * необходимо задать вручную.
      */
     private fun drawView(canvas: Canvas?, width: Int = this.width): Float {
-        return drawSection(canvas, this.document, this.paragraphStyle, this.characterStyle,
+        return drawSection(canvas, this.document, null, null,
                 this.paddingTop.toFloat(), this.paddingLeft.toFloat(),
                 (width - this.paddingRight).toFloat())
     }
@@ -112,18 +110,20 @@ open class DocumentView(context: Context,
      * @param clipRight Границы секции. Нижняя граница вычисляется.
      */
     open fun drawSection(canvas: Canvas?, section: Section,
-        parentParagraphStyle: ParagraphStyle,
-        parentCharacterStyle: CharacterStyle,
+        parentParagraphStyle: ParagraphStyle?,
+        parentCharacterStyle: CharacterStyle?,
         clipTop: Float, clipLeft: Float, clipRight: Float
     ): Float {
 
         val borderStyle = section.borderStyle
         val paragraphStyle = parentParagraphStyle
-                .clone()
-                .attach(section.paragraphStyle)
+                ?.clone()
+                ?.attach(section.paragraphStyle)
+                ?: section.paragraphStyle
         val characterStyle = parentCharacterStyle
-                .clone()
-                .attach(section.characterStyle, this.density)
+                ?.clone()
+                ?.attach(section.characterStyle, this.density)
+                ?: section.characterStyle
 
         // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
         // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
@@ -144,8 +144,9 @@ open class DocumentView(context: Context,
                 when (item) {
                     is Section -> sectionBottom = drawSection(null, item, paragraphStyle,
                             characterStyle, sectionBottom, sectionLeft, sectionRight)
-                    is Paragraph -> sectionBottom = drawParagraph(null, item, paragraphStyle,
-                            characterStyle, sectionBottom, sectionLeft, sectionRight)
+                    is Paragraph -> sectionBottom = drawParagraph(null, item,
+                            paragraphStyle, characterStyle, sectionBottom, sectionLeft,
+                            sectionRight)
                 }
             }
 
@@ -214,6 +215,20 @@ open class DocumentView(context: Context,
         var paragraphBottom = paragraphTop + Size.toPixels(paragraphStyle.topIndent,
                 this.density, fontSize, parentWidth)
 
+        val baselineLeft by lazy {
+            if (this.baselineMode == Baseline.PARAGRAPH) {
+                paragraphLeft -
+                        Size.toPixels(borderStyle.paddingLeft, this.density, fontSize, parentWidth)
+            } else 0f
+        }
+
+        val baselineRight by lazy {
+            if (this.baselineMode == Baseline.PARAGRAPH) {
+                paragraphRight +
+                        Size.toPixels(borderStyle.paddingRight, this.density, fontSize, parentWidth)
+            } else this.width.toFloat()
+        }
+
         if (paragraph.text.isNotEmpty() || this.drawEmptyParagraph) {
             // Вычисляем размеры абзаца, разбиваем абзац на строки
 
@@ -244,6 +259,7 @@ open class DocumentView(context: Context,
             var isFirst = true
             var first = 0
             var isFirstLine = true
+            var lastSegmentFontMetrics: Paint.FontMetrics? = null
 
             this.segments.clear()
 
@@ -276,16 +292,20 @@ open class DocumentView(context: Context,
                     var segmentEnd = inParser.pos
 
                     loop@ while (!inParser.eof()) {
-                        when (inParser.get()) {
+                        val char = inParser.get()
+                        when (char) {
                             ' ' -> break@loop
                             '\u00AD' -> {
                                 inParser.next()
                                 withHyphen = true
                                 break@loop
                             }
-                            '\n' -> {
+                            '\r', '\n', '\u0085', '\u2028', '\u2029' -> {
                                 inParser.next()
                                 withEol = true
+                                if (char == '\r' && !inParser.eof() && inParser.get() == '\n') {
+                                    inParser.next()
+                                }
                                 break@loop
                             }
                         }
@@ -297,6 +317,37 @@ open class DocumentView(context: Context,
                     val baselineShift = segmentCharacterStyle.baselineShift.toPixels(
                             this.density, fontSize)
 
+                    var ascent: Float
+                    var descent: Float
+
+                    // Рассчитываем верхнюю и нижнюю границы и смещение базовой линии
+                    // в зависимости от выравнивания по вертикали
+                    if (segmentCharacterStyle.verticalAlign ==
+                            CharacterStyle.VAlign.TOP &&
+                            lastSegmentFontMetrics != null) {
+                        ascent = lastSegmentFontMetrics.ascent + baselineShift
+                        descent = ascent - segmentFontMetrics.ascent + segmentFontMetrics.descent +
+                                segmentFontMetrics.leading
+                        segmentCharacterStyle.baselineShift =
+                                Size.px(lastSegmentFontMetrics.ascent -
+                                        segmentFontMetrics.ascent + baselineShift)
+                    } else if (segmentCharacterStyle.verticalAlign ==
+                            CharacterStyle.VAlign.BOTTOM &&
+                            lastSegmentFontMetrics != null) {
+                        descent = lastSegmentFontMetrics.descent + baselineShift
+                        ascent = descent + segmentFontMetrics.ascent - segmentFontMetrics.descent -
+                                segmentFontMetrics.leading
+                        segmentCharacterStyle.baselineShift =
+                                Size.px(lastSegmentFontMetrics.descent -
+                                        segmentFontMetrics.descent + baselineShift)
+                    } else {
+                        ascent = segmentFontMetrics.ascent + baselineShift
+                        descent = segmentFontMetrics.descent + segmentFontMetrics.leading +
+                                baselineShift
+                    }
+
+                    lastSegmentFontMetrics = segmentFontMetrics
+
                     val segment = Segment(
                             isFirst = isFirst,
                             spaces = spaces,
@@ -304,9 +355,8 @@ open class DocumentView(context: Context,
                             end = segmentEnd,
                             characterStyle = segmentCharacterStyle,
                             font = segmentFont,
-                            ascent = segmentFontMetrics.ascent + baselineShift,
-                            descent = segmentFontMetrics.descent +
-                                    segmentFontMetrics.leading + baselineShift,
+                            ascent = ascent,
+                            descent = descent,
                             spacesWidth = if (!isFirst) {
                                 this.textPaint.measureText(paragraph.text,
                                         inParser.start - spaces, inParser.start)
@@ -443,12 +493,13 @@ open class DocumentView(context: Context,
                             }
 
                             // Устанавливаем базовую линию для всей строки
-                            var ascent = 0f
-                            var descent = 0f
+                            ascent = 0f
+                            descent = 0f
 
                             for (i in first..last) {
-                                ascent = min(ascent, this.segments[i].ascent)
-                                descent = max(descent, this.segments[i].descent)
+                                val s = this.segments[i]
+                                ascent = min(ascent, s.ascent + s.baseline)
+                                descent = max(descent, s.descent + s.baseline)
                             }
 
                             baseline = round(paragraphBottom - ascent)
@@ -568,14 +619,15 @@ open class DocumentView(context: Context,
                             }
                         }
 
-                        // Базовые линии
+                        // Базовая линия
                         if (this.baselineMode != Baseline.NONE) {
                             this.paint.color = this.baselineColor
-                            if (this.baselineMode == Baseline.FULL) {
-                                canvas.drawLine(paragraphLeft, segment.baseline, paragraphRight,
+                            if (this.baselineMode == Baseline.PARAGRAPH ||
+                                    this.baselineMode == Baseline.VIEW) {
+                                canvas.drawLine(baselineLeft, segment.baseline, baselineRight,
                                         segment.baseline,
                                         this.paint)
-                            } else if (this.baselineMode == Baseline.INDENT) {
+                            } else {
                                 canvas.drawLine(leftOfLine, segment.baseline, rightOfLine,
                                         segment.baseline, this.paint)
                             }
@@ -587,21 +639,16 @@ open class DocumentView(context: Context,
                     val withHyphen = i == lastSegmentIndex &&
                             this.segments[lastSegmentIndex].hyphenWidth != 0f
 
-                    x += drawText(canvas,
-                            paragraph.text,
-                            segment.start,
-                            segment.end,
-                            x,
-                            segment.baseline + segment.characterStyle.baselineShift.toPixels(
-                                    this.density, fontSize),
+                    val baselineShift = segment.characterStyle.baselineShift.toPixels(
+                            this.density, fontSize)
+
+                    x += drawText(canvas, paragraph.text, segment.start, segment.end,
+                            x, segment.baseline + baselineShift,
                             this.textPaint)
 
                     if (withHyphen) {
-                        x += drawText(canvas,
-                                segment.font.hyphen.toString(),
-                                x,
-                                segment.baseline + segment.characterStyle.baselineShift.toPixels(
-                                        this.density, fontSize),
+                        x += drawText(canvas, segment.font.hyphen.toString(),
+                                x, segment.baseline + baselineShift,
                                 this.textPaint)
                     }
                 }

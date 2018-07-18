@@ -103,8 +103,8 @@ class DebugDocumentView(context: Context,
 
     override fun drawSection(canvas: Canvas?,
         section: Section,
-        parentParagraphStyle: ParagraphStyle,
-        parentCharacterStyle: CharacterStyle,
+        parentParagraphStyle: ParagraphStyle?,
+        parentCharacterStyle: CharacterStyle?,
         clipTop: Float,
         clipLeft: Float,
         clipRight: Float
@@ -114,8 +114,9 @@ class DebugDocumentView(context: Context,
 
         val borderStyle = section.borderStyle
         val characterStyle = parentCharacterStyle
-                .clone()
-                .attach(section.characterStyle, this.density)
+                ?.clone()
+                ?.attach(section.characterStyle, this.density)
+                ?: section.characterStyle
 
         val bottom = super.drawSection(canvas, section, parentParagraphStyle,
                 parentCharacterStyle, clipTop, clipLeft, clipRight)
