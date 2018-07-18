@@ -204,9 +204,12 @@ docView.document
 Абзац можно оформить рамкой:
 
 ```kotlin
-docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
-        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n" +
-        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")
+docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " +
+        "do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut " +
+        "aliquip ex ea commodo consequat.\n" +
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore " +
+        "eu fugiat nulla pariatur.")
 docView.document[0].borderStyle
         .setPadding(Size.dp(8f))
         .setBorder(Border.dp(1f, Color.rgb(0xDC3023)))
@@ -267,10 +270,14 @@ docView.document.borderStyle
 
 ```kotlin
 docView.document.setText("Lorem ipsum\n" +
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
-        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n" +
-        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n" +
-        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod " +
+        "tempor incididunt ut labore et dolore magna aliqua.\n" +
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi " +
+        "ut aliquip ex ea commodo consequat.\n" +
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore " +
+        "eu fugiat nulla pariatur.\n" +
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia " +
+        "deserunt mollit anim id est laborum.")
 
 docView.document.characterStyle
         .setSize(Size.percent(120f))
@@ -285,7 +292,6 @@ docView.document[0].paragraphStyle
 docView.document[0].borderStyle
         .setBorderBottom(Border.dp(1f, Color.LTGRAY))
         .setMarginBottom(Size.dp(4f))
-
 docView.document[1].paragraphStyle
         .setAlign(ParagraphStyle.Align.LEFT)
         .setFirstLeftIndent(Size.em(2f))
@@ -368,10 +374,14 @@ docView.fontList["ponomar"] = Font(
 ```kotlin
 // Мягкие переносы ля наглядности обозначаем знаком '~', затем их переводим в '\u00AD'
 val string = "Lorem ipsum\n" +
-        "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
-        "Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.\n" +
-        "Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.\n" +
-        "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui of~fi~cia de~se~runt mol~lit anim id est la~bo~rum."
+        "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do " +
+        "eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
+        "Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris " +
+        "ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.\n" +
+        "Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se " +
+        "cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.\n" +
+        "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui " +
+        "of~fi~cia de~se~runt mol~lit anim id est la~bo~rum."
 docView.document.setText(string.replace('~', '\u00AD'))
 ```
 
