@@ -474,23 +474,43 @@ docView.document[4]
 
 ![screenshot_11_2.png](docs/screenshot_11_2.png)
 
-Как видно на этом примере, это не всегда выглядит красиво. Высота некоторых строк увеличилась (отмечены красным). Чтобы исправить верхние и нижние индексы можно подобрать экспериментальным путём размер символов и смещение базовой линии. А можно с помощью свойства `verticalAlign` выравнять их по верхней или нижней границе символа, находящегося слева. Но шрифт всё равно лучше уменьшить:
+Как видно на этом примере, это не всегда выглядит красиво. Высота некоторых строк увеличилась (отмечены красным). Чтобы исправить верхние и нижние индексы можно подобрать экспериментальным путём размер символов и смещение базовой линии. А можно с помощью свойства `verticalAlign` выравнять их по верхней или нижней границе рядом расположенного символа (первого слева, выровненного по базовой линии). Но шрифт всё равно лучше уменьшить:
 
 ```kotlin
-    docView.document[2]
-            .addWordSpan(10, CharacterStyle(
-                    size = Size.em(1.4f)))
-    docView.document[3]
-            .addSpan(Regex("""\d+"""), -1, CharacterStyle(
-                    verticalAlign = CharacterStyle.VAlign.BOTTOM,
-                    size = Size.em(0.6f)))
-    docView.document[4]
-            .addSpan(Regex("""\*"""), CharacterStyle(
-                    verticalAlign = CharacterStyle.VAlign.TOP,
-                    size = Size.em(0.7f)))
+docView.document[3]
+        .addSpan(Regex("""\d+"""), -1, CharacterStyle(
+                verticalAlign = CharacterStyle.VAlign.BOTTOM,
+                size = Size.em(0.6f)))
+docView.document[4]
+        .addSpan(Regex("""\*"""), CharacterStyle(
+                verticalAlign = CharacterStyle.VAlign.TOP,
+                size = Size.em(0.7f)))
 ```
 
 ![screenshot_11_3.png](docs/screenshot_11_3.png)
+
+Можно оставить предыдущие размеры и смещение базовой линии, но убрать участки из рассчёта размера строки, установив свойство `nullSizeEffect`. Но в этом случае возможно пересечение с верхними или нижними знаками, поэтому ответственность за такое решение лежит на Вас:
+
+```kotlin
+docView.document[2]
+        .addWordSpan(10, CharacterStyle(
+                size = Size.em(1.4f),
+                nullSizeEffect = true))
+docView.document[3]
+        .addSpan(Regex("""\d+"""), CharacterStyle(
+                baselineShift = Size.em(0.25f),
+                size = Size.em(0.7f),
+                nullSizeEffect = true))
+docView.document[4]
+        .addSpan(Regex("""\*"""), CharacterStyle(
+                baselineShift = Size.em(-0.4f),
+                size = Size.em(0.85f),
+                nullSizeEffect = true))
+```
+
+![screenshot_11_4.png](docs/screenshot_11_4.png)
+
+Строки получились одинакового размера, но слово "laboris" и сноска "\*" чудом не пересекаются со строкой выше.
 
 Есть ещё варианты решения проблемы, но о них позже.
 
