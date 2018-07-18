@@ -416,13 +416,83 @@ docView.document.addSpan(0, 1, CharacterStyle(color = Color.RED))
 
 В `DocumentView` можно включить режим, показывающий базовые линии:
 
+```kotlin
+val string = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, " +
+        "sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
+docView.document.setText(string.replace('~', '\u00AD'))
+
+docView.baselineMode = DocumentView.Baseline.PARAGRAPH
+```
+
 ![screenshot_11.png](docs/screenshot_11.png)
 
 Базовые линии рассчитываются автоматически по максимальным размерам задействованных в строке символов (`ascent` и `descent`) с учётом их смещений относительно базовой линии (`baselineShift`):
 
+```kotlin
+val string = "Lorem ipsum\n" +
+        "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do " +
+        "eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
+        "Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris " +
+        "ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.\n" +
+        "Duis1 aute2 iru~re3 do~lor4 in5 rep~re~hen~de~rit6 in7 vo~lup~ta~te8 ve~lit9 es~se10 " +
+        "cil~lum11 do~lo~re12 eu13 fu~gi~at14 nul~la15 pa~ria~tur16.\n" +
+        "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa* qui " +
+        "of~fi~cia de~se~runt mol~lit anim id est la~bo~rum."
+docView.document.setText(string.replace('~', '\u00AD'))
+
+docView.baselineMode = DocumentView.Baseline.VIEW
+docView.baselineColor = Color.rgb(0x4B77BE)
+
+docView.document.characterStyle
+        .setSize(Size.dp(18f))
+docView.document.paragraphStyle
+        .setAlign(ParagraphStyle.Align.JUSTIFY)
+        .setFirstLeftIndent(Size.dp(24f))
+
+docView.document[0].characterStyle
+        .setSize(Size.em(1.6f))
+docView.document[0].paragraphStyle
+        .setAlign(ParagraphStyle.Align.CENTER)
+        .setFirstLeftIndent(Size.dp(0f))
+        .setTopIndent(Size.dp(0f))
+        .setBottomIndent(Size.em(0.5f))
+docView.document[1].paragraphStyle
+        .setFirstLeftIndent(Size.em(0f))
+
+docView.document[2]
+        .addWordSpan(10, CharacterStyle(
+                size = Size.em(1.4f)))
+docView.document[3]
+        .addSpan(Regex("""\d+"""), -1, CharacterStyle(
+                baselineShift = Size.em(0.25f),
+                size = Size.em(0.7f)))
+docView.document[4]
+        .addSpan(Regex("""\*"""), CharacterStyle(
+                baselineShift = Size.em(-0.4f),
+                size = Size.em(0.85f)))
+```
+
 ![screenshot_11_2.png](docs/screenshot_11_2.png)
 
-Как видно на этом примере, это не всегда выглядит красиво. Расстояние между некоторыми строками увеличилось (красным отмечены строки с увеличенным размером).
+Как видно на этом примере, это не всегда выглядит красиво. Высота некоторых строк увеличилась (отмечены красным). Символы в верхнем и нижнем индексе можно исправить, выравняв их, соответственно, по верхней и нижней границе символа, находящегося слева. Но тогда желательно и уменьшить размер шрифта:
+
+```kotlin
+    docView.document[2]
+            .addWordSpan(10, CharacterStyle(
+                    size = Size.em(1.4f)))
+    docView.document[3]
+            .addSpan(Regex("""\d+"""), -1, CharacterStyle(
+                    verticalAlign = CharacterStyle.VAlign.BOTTOM,
+                    size = Size.em(0.6f)))
+    docView.document[4]
+            .addSpan(Regex("""\*"""), CharacterStyle(
+                    verticalAlign = CharacterStyle.VAlign.TOP,
+                    size = Size.em(0.7f)))
+```
+
+![screenshot_11_3.png](docs/screenshot_11_3.png)
+
+Есть ещё варианты решения проблемы, но о них позже.
 
 ## Секции
 
