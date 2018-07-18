@@ -266,7 +266,7 @@ docView.document.borderStyle
 
 ## Оформление абзацев
 
-Для оформления абзацев есть: отступы сверху и снизу (`topIndent`, `bottomIndent`), выравнивание (`align`) по левому краю, по правому, по ширине и относительно центра, отступы слева и справа (`leftIndent`, `rightIndent`), отдельное выравнивание и отступ для первой строки (`firstAlign`, `firstLeftIndent`, `firstRightIndent`), отдельное выравнивание для последней строки (`lastAlign`).
+Для оформления абзацев есть: отступы сверху и снизу (`topIndent`, `bottomIndent`), выравнивание (`align`) по левому краю, по правому, по ширине и относительно центра, отступы слева и справа (`leftIndent`, `rightIndent`), отдельное выравнивание и отступы для первой строки (`firstAlign`, `firstLeftIndent`, `firstRightIndent`), отдельное выравнивание для последней строки (`lastAlign`).
 
 ```kotlin
 docView.document.setText("Lorem ipsum\n" +
