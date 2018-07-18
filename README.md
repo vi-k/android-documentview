@@ -225,7 +225,7 @@ docView.document[2].borderStyle
 
 ![screenshot_7.png](docs/screenshot_7.png)
 
-В примере используется класс модуля для работы с цветом `color` ([wiki][color]).
+В примере используется класс `Color` из модуля для работы с цветом `color` ([wiki][color]). Это не [android.graphics.Color](https://developer.android.com/reference/android/graphics/Color).
 
 Рамки богут быть разными. Сам документ тоже может иметь отдельную рамку:
 
