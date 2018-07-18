@@ -329,8 +329,7 @@ open class DocumentView(context: Context,
                         descent = ascent - segmentFontMetrics.ascent + segmentFontMetrics.descent +
                                 segmentFontMetrics.leading
                         segmentCharacterStyle.baselineShift =
-                                Size.px(lastSegmentFontMetrics.ascent -
-                                        segmentFontMetrics.ascent + baselineShift)
+                                Size.px(ascent - segmentFontMetrics.ascent)
                     } else if (segmentCharacterStyle.verticalAlign ==
                             CharacterStyle.VAlign.BOTTOM &&
                             lastSegmentFontMetrics != null) {
@@ -338,15 +337,13 @@ open class DocumentView(context: Context,
                         ascent = descent + segmentFontMetrics.ascent - segmentFontMetrics.descent -
                                 segmentFontMetrics.leading
                         segmentCharacterStyle.baselineShift =
-                                Size.px(lastSegmentFontMetrics.descent -
-                                        segmentFontMetrics.descent + baselineShift)
+                                Size.px(descent - segmentFontMetrics.descent)
                     } else {
                         ascent = segmentFontMetrics.ascent + baselineShift
                         descent = segmentFontMetrics.descent + segmentFontMetrics.leading +
                                 baselineShift
+                        lastSegmentFontMetrics = segmentFontMetrics
                     }
-
-                    lastSegmentFontMetrics = segmentFontMetrics
 
                     val segment = Segment(
                             isFirst = isFirst,
