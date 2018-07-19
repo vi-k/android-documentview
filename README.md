@@ -281,7 +281,7 @@ docView.document.setText("Lorem ipsum\n" +
         "deserunt mollit anim id est laborum.")
 
 docView.document.characterStyle
-        .setSize(Size.percent(120f))
+        .setSize(Size.em(1.2f))
 docView.document.paragraphStyle
         .setTopIndent(Size.dp(8f)) // Отступ сверху, общий для всех абзацев
 
