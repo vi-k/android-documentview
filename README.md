@@ -267,7 +267,7 @@ docView.document.borderStyle
 
 ## Оформление абзацев
 
-Для оформления абзацев есть: отступы сверху и снизу (`topIndent`, `bottomIndent`), выравнивание (`align`) по левому краю, по правому, по ширине и относительно центра, отступы слева и справа (`leftIndent`, `rightIndent`), отдельное выравнивание и отступы для первой строки (`firstAlign`, `firstLeftIndent`, `firstRightIndent`), отдельное выравнивание для последней строки (`lastAlign`).
+Для оформления абзацев есть: отступы сверху и снизу (`spaceBefore`, `spaceAfter`), выравнивание (`align`) по левому краю, по правому, по ширине и относительно центра, отступы слева и справа (`leftIndent`, `rightIndent`), отдельное выравнивание и отступы для первой строки (`firstAlign`, `firstLeftIndent`, `firstRightIndent`), отдельное выравнивание для последней строки (`lastAlign`).
 
 ```kotlin
 docView.document.setText("Lorem ipsum\n" +
@@ -283,13 +283,13 @@ docView.document.setText("Lorem ipsum\n" +
 docView.document.characterStyle
         .setSize(Size.em(1.2f))
 docView.document.paragraphStyle
-        .setTopIndent(Size.dp(8f)) // Отступ сверху, общий для всех абзацев
+        .setSpaceBefore(Size.dp(8f)) // Отступ сверху, общий для всех абзацев
 
 docView.document[0].characterStyle
         .setSize(Size.em(2f))
 docView.document[0].paragraphStyle
         .setAlign(ParagraphStyle.Align.CENTER)
-        .setTopIndent(Size.dp(0f))
+        .setSpaceBefore(Size.dp(0f))
 docView.document[0].borderStyle
         .setBorderBottom(Border.dp(1f, Color.LTGRAY))
         .setMarginBottom(Size.dp(4f))
@@ -426,7 +426,7 @@ docView.baselineMode = DocumentView.Baseline.PARAGRAPH
 
 ![screenshot_11.png](docs/screenshot_11.png)
 
-Базовые линии рассчитываются автоматически по максимальным размерам задействованных в строке символов (`ascent` и `descent`) с учётом их смещений относительно базовой линии (`baselineShift`):
+Базовые линии рассчитываются автоматически по максимальным размерам задействованных в строке символов с учётом их смещений относительно базовой линии (`baselineShift`):
 
 ```kotlin
 val string = "Lorem ipsum\n" +
@@ -454,7 +454,6 @@ docView.document[0].characterStyle
 docView.document[0].paragraphStyle
         .setAlign(ParagraphStyle.Align.CENTER)
         .setFirstLeftIndent(Size.dp(0f))
-        .setTopIndent(Size.dp(0f))
         .setBottomIndent(Size.em(0.5f))
 docView.document[1].paragraphStyle
         .setFirstLeftIndent(Size.em(0f))
@@ -474,7 +473,7 @@ docView.document[4]
 
 ![screenshot_11_2.png](docs/screenshot_11_2.png)
 
-Как видно на этом примере, это не всегда выглядит красиво. Высота некоторых строк увеличилась (отмечены красным). Чтобы исправить верхние и нижние индексы можно подобрать экспериментальным путём размер символов и смещение базовой линии. А можно с помощью свойства `verticalAlign` выравнять их по верхней или нижней границе рядом расположенного символа (первого слева, выровненного по базовой линии). Но шрифт всё равно лучше уменьшить:
+Это удобно, но, как видно на этом примере, не всегда выглядит красиво - высота некоторых строк увеличилась (отмечены красным). Чтобы исправить верхние и нижние индексы можно подобрать экспериментальным путём размер символов и смещение базовой линии. А можно с помощью свойства `verticalAlign` выравнять их по верхней или нижней границе рядом расположенного символа (первого слева, выровненного по базовой линии). Но шрифт всё равно лучше уменьшить:
 
 ```kotlin
 docView.document[3]
