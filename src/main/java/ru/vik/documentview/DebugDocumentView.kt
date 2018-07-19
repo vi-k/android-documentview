@@ -26,7 +26,7 @@ class DebugDocumentView(context: Context,
         this.debugPaint.isAntiAlias = true
         this.debugPaint.color = Color.rgb(255, 0, 0)
         this.debugPaint.isFakeBoldText = true
-        this.debugPaint.textSize = 8f * this.scaledDensity
+        this.debugPaint.textSize = 8f * this.deviceMetrics.scaledDensity
     }
 
     override fun drawPoint(canvas: Canvas, x: Float, y: Float, color: Int) {
@@ -84,15 +84,18 @@ class DebugDocumentView(context: Context,
         borderStyle.setBorder(Border.dp(2.5f, Color.argb(255, 255, 0, 0)),
                 Border.dp(3.5f, Color.argb(255, 0, 0, 255)))
 
+        val localMetrics = Size.LocalMetrics(this.deviceMetrics,
+                0f, 0f, 0f)
+
         val leftBorder = borderStyle.borderLeft
-        drawBorder(canvas, borderStyle, 6f, 8f, 11f, 15f, 0f, 0f)
-        drawBorder(canvas, borderStyle, 24.5f, 8.5f, 29.5f, 15.5f, 0f, 0f)
+        drawBorder(canvas, borderStyle, 6f, 8f, 11f, 15f, localMetrics)
+        drawBorder(canvas, borderStyle, 24.5f, 8.5f, 29.5f, 15.5f, localMetrics)
         borderStyle.borderLeft = null
-        drawBorder(canvas, borderStyle, 42.5f, 8.5f, 47.5f, 15.5f, 0f, 0f)
+        drawBorder(canvas, borderStyle, 42.5f, 8.5f, 47.5f, 15.5f, localMetrics)
         borderStyle.borderRight = null
-        drawBorder(canvas, borderStyle, 60.5f, 8.5f, 65.5f, 15.5f, 0f, 0f)
+        drawBorder(canvas, borderStyle, 60.5f, 8.5f, 65.5f, 15.5f, localMetrics)
         borderStyle.setBorder(null, leftBorder)
-        drawBorder(canvas, borderStyle, 78.5f, 8.5f, 83.5f, 15.5f, 0f, 0f)
+        drawBorder(canvas, borderStyle, 78.5f, 8.5f, 83.5f, 15.5f, localMetrics)
 
         this.bigPoint = false
     }
@@ -115,7 +118,7 @@ class DebugDocumentView(context: Context,
         val borderStyle = section.borderStyle
         val characterStyle = parentCharacterStyle
                 ?.clone()
-                ?.attach(section.characterStyle, this.density)
+                ?.attach(section.characterStyle, this.deviceMetrics.scaledDensity)
                 ?: section.characterStyle
 
         val bottom = super.drawSection(canvas, section, parentParagraphStyle,
@@ -123,20 +126,23 @@ class DebugDocumentView(context: Context,
 
         if (canvas != null) {
             // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
-            // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
-            val (sectionFont, _) = getFont(characterStyle)
-            val fontSize = getFontSize(characterStyle, sectionFont.scale)
-            val parentWidth = clipRight - clipLeft
+            // (если они указаны в em, ratio и eh). Размеры уже рассчитаны с учётом density
+            // и scaledDensity
+            val (sectionFont, fontMetrics) =
+                    characterStyle2TextPaint(characterStyle, this.textPaint)
+            val localMetrics = Size.LocalMetrics(this.deviceMetrics,
+                    getFontSize(characterStyle, sectionFont.scale),
+                    fontMetrics.descent - fontMetrics.ascent + fontMetrics.leading,
+                    clipRight - clipLeft
+            )
 
             drawTimeElapsed(canvas, System.currentTimeMillis() - t,
-                    clipLeft +
-                            Size.toPixels(borderStyle.marginLeft, this.density, fontSize,
-                                    parentWidth) +
-                            Size.toPixels(borderStyle.borderLeft, this.density, fontSize),
-                    bottom -
-                            Size.toPixels(borderStyle.marginBottom, this.density, fontSize,
-                                    parentWidth) -
-                            Size.toPixels(borderStyle.borderBottom, this.density, fontSize))
+                    clipLeft + Size.toPixels(borderStyle.marginLeft, localMetrics) +
+                            Size.toPixels(borderStyle.borderLeft, localMetrics,
+                                    useParentSize = false),
+                    bottom - Size.toPixels(borderStyle.marginBottom, localMetrics) -
+                            Size.toPixels(borderStyle.borderBottom, localMetrics,
+                                    useParentSize = false))
         }
 
         return bottom
@@ -157,25 +163,29 @@ class DebugDocumentView(context: Context,
         val borderStyle = paragraph.borderStyle
         val characterStyle = parentCharacterStyle
                 .clone()
-                .attach(paragraph.characterStyle, this.density)
+                .attach(paragraph.characterStyle, this.deviceMetrics.scaledDensity)
 
         val bottom = super.drawParagraph(canvas, paragraph, parentParagraphStyle,
                 parentCharacterStyle, clipTop, clipLeft, clipRight)
 
         if (canvas != null) {
             // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
-            // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
-            val (sectionFont, _) = getFont(characterStyle)
-            val fontSize = getFontSize(characterStyle, sectionFont.scale)
-            val parentWidth = clipRight - clipLeft
+            // (если они указаны в em, ratio и eh). Размеры уже рассчитаны с учётом density
+            // и scaledDensity
+            val (paragraphFont, fontMetrics) =
+                    characterStyle2TextPaint(characterStyle, this.textPaint)
+            val localMetrics = Size.LocalMetrics(this.deviceMetrics,
+                    getFontSize(characterStyle, paragraphFont.scale),
+                    fontMetrics.descent - fontMetrics.ascent + fontMetrics.leading,
+                    clipRight - clipLeft)
 
             drawTimeElapsed(canvas, System.currentTimeMillis() - t,
-                    clipLeft + Size.toPixels(borderStyle.marginLeft, this.density, fontSize,
-                            parentWidth) + Size.toPixels(borderStyle.borderLeft, this.density,
-                            fontSize, parentWidth),
-                    bottom - Size.toPixels(borderStyle.marginBottom, this.density, fontSize,
-                            parentWidth) - Size.toPixels(borderStyle.borderBottom, this.density,
-                            fontSize))
+                    clipLeft + Size.toPixels(borderStyle.marginLeft, localMetrics) +
+                            Size.toPixels(borderStyle.borderLeft, localMetrics,
+                                    useParentSize = false),
+                    bottom - Size.toPixels(borderStyle.marginBottom, localMetrics) -
+                            Size.toPixels(borderStyle.borderBottom, localMetrics,
+                                    useParentSize = false))
         }
 
         return bottom
