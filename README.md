@@ -544,7 +544,13 @@ docView.document[0]
 
 ![screenshot_11_7.png](docs/screenshot_11_7.png)
 
-Интерлиньяж `leading = ...` для первой строки не работает!
+Интерлиньяж `leading = ...` для первой строки не работает! Хотя, если принудительно установить первую базовую строку на начало секции, можно получить желаемую синхронизацию:
+
+```kotlin
+docView.document.setFirstBaselineToTop = true
+```
+
+![screenshot_11_8.png](docs/screenshot_11_8.png)
 
 ## Секции
 
