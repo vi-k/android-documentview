@@ -84,8 +84,7 @@ class DebugDocumentView(context: Context,
         borderStyle.setBorder(Border.dp(2.5f, Color.argb(255, 255, 0, 0)),
                 Border.dp(3.5f, Color.argb(255, 0, 0, 255)))
 
-        val localMetrics = Size.LocalMetrics(this.deviceMetrics,
-                0f, 0f, 0f)
+        val localMetrics = Size.LocalMetrics()
 
         val leftBorder = borderStyle.borderLeft
         drawBorder(canvas, borderStyle, 6f, 8f, 11f, 15f, localMetrics)
@@ -106,8 +105,9 @@ class DebugDocumentView(context: Context,
 
     override fun drawSection(canvas: Canvas?,
         section: Section,
-        parentParagraphStyle: ParagraphStyle?,
-        parentCharacterStyle: CharacterStyle?,
+        parentParagraphStyle: ParagraphStyle,
+        parentCharacterStyle: CharacterStyle,
+        parentLocalMetrics: Size.LocalMetrics,
         clipTop: Float,
         clipLeft: Float,
         clipRight: Float
@@ -115,34 +115,28 @@ class DebugDocumentView(context: Context,
 
         val t = System.currentTimeMillis()
 
-        val borderStyle = section.borderStyle
-        val characterStyle = parentCharacterStyle
-                ?.clone()
-                ?.attach(section.characterStyle, this.deviceMetrics.scaledDensity)
-                ?: section.characterStyle
-
         val bottom = super.drawSection(canvas, section, parentParagraphStyle,
-                parentCharacterStyle, clipTop, clipLeft, clipRight)
+                parentCharacterStyle, parentLocalMetrics, clipTop, clipLeft, clipRight)
 
         if (canvas != null) {
-            // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
-            // (если они указаны в em, ratio и eh). Размеры уже рассчитаны с учётом density
-            // и scaledDensity
-            val (sectionFont, fontMetrics) =
-                    characterStyle2TextPaint(characterStyle, this.textPaint)
-            val localMetrics = Size.LocalMetrics(this.deviceMetrics,
-                    getFontSize(characterStyle, sectionFont.scale),
-                    fontMetrics.descent - fontMetrics.ascent + fontMetrics.leading,
-                    clipRight - clipLeft
-            )
+            section.cacheCharacterStyle
+                    .copy(parentCharacterStyle)
+                    .attach(section.characterStyle, this.deviceMetrics, parentLocalMetrics)
+
+            // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
+            // Размеры уже рассчитаны с учётом density и scaledDensity
+            characterStyle2TextPaint(section.cacheCharacterStyle, section.cacheLocalMetrics)
+            section.cacheLocalMetrics.parentSize = clipRight - clipLeft
 
             drawTimeElapsed(canvas, System.currentTimeMillis() - t,
-                    clipLeft + Size.toPixels(borderStyle.marginLeft, localMetrics) +
-                            Size.toPixels(borderStyle.borderLeft, localMetrics,
-                                    useParentSize = false),
-                    bottom - Size.toPixels(borderStyle.marginBottom, localMetrics) -
-                            Size.toPixels(borderStyle.borderBottom, localMetrics,
-                                    useParentSize = false))
+                    clipLeft + Size.toPixels(section.borderStyle.marginLeft, this.deviceMetrics,
+                            section.cacheLocalMetrics) + Size.toPixels(
+                            section.borderStyle.borderLeft, this.deviceMetrics,
+                            section.cacheLocalMetrics, useParentSize = false),
+                    bottom - Size.toPixels(section.borderStyle.marginBottom, this.deviceMetrics,
+                            section.cacheLocalMetrics) - Size.toPixels(
+                            section.borderStyle.borderBottom, this.deviceMetrics,
+                            section.cacheLocalMetrics, useParentSize = false))
         }
 
         return bottom
@@ -153,6 +147,7 @@ class DebugDocumentView(context: Context,
         paragraph: Paragraph,
         parentParagraphStyle: ParagraphStyle,
         parentCharacterStyle: CharacterStyle,
+        parentLocalMetrics: Size.LocalMetrics,
         clipTop: Float,
         clipLeft: Float,
         clipRight: Float
@@ -160,32 +155,28 @@ class DebugDocumentView(context: Context,
 
         val t = System.currentTimeMillis()
 
-        val borderStyle = paragraph.borderStyle
-        val characterStyle = parentCharacterStyle
-                .clone()
-                .attach(paragraph.characterStyle, this.deviceMetrics.scaledDensity)
-
         val bottom = super.drawParagraph(canvas, paragraph, parentParagraphStyle,
-                parentCharacterStyle, clipTop, clipLeft, clipRight)
+                parentCharacterStyle, parentLocalMetrics, clipTop, clipLeft, clipRight)
 
         if (canvas != null) {
-            // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
-            // (если они указаны в em, ratio и eh). Размеры уже рассчитаны с учётом density
-            // и scaledDensity
-            val (paragraphFont, fontMetrics) =
-                    characterStyle2TextPaint(characterStyle, this.textPaint)
-            val localMetrics = Size.LocalMetrics(this.deviceMetrics,
-                    getFontSize(characterStyle, paragraphFont.scale),
-                    fontMetrics.descent - fontMetrics.ascent + fontMetrics.leading,
-                    clipRight - clipLeft)
+            paragraph.cacheCharacterStyle
+                    .copy(parentCharacterStyle)
+                    .attach(paragraph.characterStyle, this.deviceMetrics, parentLocalMetrics)
+
+            // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
+            // Размеры уже рассчитаны с учётом density и scaledDensity
+            characterStyle2TextPaint(paragraph.cacheCharacterStyle, paragraph.cacheLocalMetrics)
+            paragraph.cacheLocalMetrics.parentSize = clipRight - clipLeft
 
             drawTimeElapsed(canvas, System.currentTimeMillis() - t,
-                    clipLeft + Size.toPixels(borderStyle.marginLeft, localMetrics) +
-                            Size.toPixels(borderStyle.borderLeft, localMetrics,
-                                    useParentSize = false),
-                    bottom - Size.toPixels(borderStyle.marginBottom, localMetrics) -
-                            Size.toPixels(borderStyle.borderBottom, localMetrics,
-                                    useParentSize = false))
+                    clipLeft + Size.toPixels(paragraph.borderStyle.marginLeft, this.deviceMetrics,
+                            paragraph.cacheLocalMetrics) + Size.toPixels(
+                            paragraph.borderStyle.borderLeft, this.deviceMetrics,
+                            paragraph.cacheLocalMetrics, useParentSize = false),
+                    bottom - Size.toPixels(paragraph.borderStyle.marginBottom, this.deviceMetrics,
+                            paragraph.cacheLocalMetrics) - Size.toPixels(
+                            paragraph.borderStyle.borderBottom, this.deviceMetrics,
+                            paragraph.cacheLocalMetrics, useParentSize = false))
         }
 
         return bottom

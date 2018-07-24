@@ -34,6 +34,7 @@ open class DocumentView(context: Context,
         val font: Font,
         val ascent: Float,
         val descent: Float,
+        val leading: Float?,
         var spacesWidth: Float,
         var textWidth: Float,
         val hyphenWidth: Float,
@@ -49,6 +50,10 @@ open class DocumentView(context: Context,
 
     val deviceMetrics: Size.DeviceMetrics
 
+    private val paragraphStyle = ParagraphStyle.default()
+    private val characterStyle = CharacterStyle.default()
+    private val cacheLocalMetrics = Size.LocalMetrics()
+
     init {
         val displayMetrics = this.context.resources.displayMetrics
         this.deviceMetrics = Size.DeviceMetrics(displayMetrics.density,
@@ -60,6 +65,7 @@ open class DocumentView(context: Context,
 
     internal val textPaint = TextPaint()
     internal val paint = Paint()
+    internal var baseline: Float? = null
 
     init {
         this.paint.isAntiAlias = true
@@ -84,9 +90,9 @@ open class DocumentView(context: Context,
         canvas.drawLine(x1, y1, x2, y2, this.paint)
     }
 
+    @SuppressLint("DrawAllocation")
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-
         drawView(canvas)
     }
 
@@ -98,7 +104,11 @@ open class DocumentView(context: Context,
      * необходимо задать вручную.
      */
     private fun drawView(canvas: Canvas?, width: Int = this.width): Float {
-        return drawSection(canvas, this.document, null, null,
+        this.baseline = null
+        characterStyle2TextPaint(this.characterStyle, this.cacheLocalMetrics)
+
+        return drawSection(canvas, this.document,
+                this.paragraphStyle, this.characterStyle, this.cacheLocalMetrics,
                 this.paddingTop.toFloat(), this.paddingLeft.toFloat(),
                 (width - this.paddingRight).toFloat())
     }
@@ -115,55 +125,62 @@ open class DocumentView(context: Context,
      * @param clipRight Границы секции. Нижняя граница вычисляется.
      */
     open fun drawSection(canvas: Canvas?, section: Section,
-        parentParagraphStyle: ParagraphStyle?,
-        parentCharacterStyle: CharacterStyle?,
+        parentParagraphStyle: ParagraphStyle,
+        parentCharacterStyle: CharacterStyle,
+        parentLocalMetrics: Size.LocalMetrics,
         clipTop: Float, clipLeft: Float, clipRight: Float
     ): Float {
 
-        val borderStyle = section.borderStyle
-        val paragraphStyle = parentParagraphStyle
-                ?.clone()
-                ?.attach(section.paragraphStyle)
-                ?: section.paragraphStyle
-        val characterStyle = parentCharacterStyle
-                ?.clone()
-                ?.attach(section.characterStyle, this.deviceMetrics.scaledDensity)
-                ?: section.characterStyle
+        section.cacheParagraphStyle
+                .copy(parentParagraphStyle)
+                .attach(section.paragraphStyle)
 
-        // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
-        // (если они указаны в em, ratio и eh). Размеры уже рассчитаны с учётом density
-        // и scaledDensity
-        val (sectionFont, fontMetrics) =
-                characterStyle2TextPaint(characterStyle, this.textPaint)
-        val localMetrics = Size.LocalMetrics(this.deviceMetrics,
-                getFontSize(characterStyle, sectionFont.scale),
-                fontMetrics.descent - fontMetrics.ascent + fontMetrics.leading,
-                clipRight - clipLeft
-        )
+        section.cacheCharacterStyle
+                .copy(parentCharacterStyle)
+                .attach(section.characterStyle, this.deviceMetrics, parentLocalMetrics)
+
+        // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
+        // Размеры уже рассчитаны с учётом density и scaledDensity
+        characterStyle2TextPaint(section.cacheCharacterStyle, section.cacheLocalMetrics)
+        section.cacheLocalMetrics.parentSize = clipRight - clipLeft
 
         // Границы абзаца (нижней границы нет, мы её вычисляем)
-        val (sectionTop, sectionLeft, sectionRight) =
-                getInnerBoundary(clipTop, clipLeft, clipRight, borderStyle, localMetrics)
+        val (sectionTop, sectionLeft, sectionRight) = getInnerBoundary(
+                clipTop, clipLeft, clipRight, section.borderStyle,
+                this.deviceMetrics, section.cacheLocalMetrics)
         var sectionBottom = sectionTop
 
-        if (canvas == null || borderStyle.needForDraw()) {
+        if (this.baseline == null && section.setFirstBaselineToTop) {
+            this.baseline = round(sectionTop)
+        }
+
+        // Во время расчётов базовая линия будет смещаться. Важно её здесь сохранить, чтобы потом
+        // восстановить перед отрисовкой
+        val savedBaseline = this.baseline
+
+        if (canvas == null || section.borderStyle.needForDraw()) {
             // Вычисление размеров, если это необходимо
 
             for (item in section.paragraphs) {
                 when (item) {
-                    is Section -> sectionBottom = drawSection(null, item, paragraphStyle,
-                            characterStyle, sectionBottom, sectionLeft, sectionRight)
+                    is Section -> sectionBottom = drawSection(null, item,
+                            section.cacheParagraphStyle, section.cacheCharacterStyle,
+                            section.cacheLocalMetrics,
+                            sectionBottom, sectionLeft, sectionRight)
                     is Paragraph -> sectionBottom = drawParagraph(null, item,
-                            paragraphStyle, characterStyle, sectionBottom, sectionLeft,
-                            sectionRight)
+                            section.cacheParagraphStyle, section.cacheCharacterStyle,
+                            section.cacheLocalMetrics,
+                            sectionBottom, sectionLeft, sectionRight)
                 }
             }
 
             if (canvas != null) {
-                drawBorder(canvas, borderStyle, sectionTop, sectionLeft, sectionBottom,
-                        sectionRight, localMetrics)
+                drawBorder(canvas, section.borderStyle, sectionTop, sectionLeft, sectionBottom,
+                        sectionRight, section.cacheLocalMetrics)
             }
         }
+
+        this.baseline = savedBaseline
 
         if (canvas != null) {
             // Отрисовка
@@ -172,18 +189,25 @@ open class DocumentView(context: Context,
 
             for (item in section.paragraphs) {
                 when (item) {
-                    is Section -> sectionBottom = drawSection(canvas, item, paragraphStyle,
-                            characterStyle, sectionBottom, sectionLeft, sectionRight)
-                    is Paragraph -> sectionBottom = drawParagraph(canvas, item, paragraphStyle,
-                            characterStyle, sectionBottom, sectionLeft, sectionRight)
+                    is Section -> sectionBottom = drawSection(canvas, item,
+                            section.cacheParagraphStyle, section.cacheCharacterStyle,
+                            section.cacheLocalMetrics,
+                            sectionBottom, sectionLeft, sectionRight)
+                    is Paragraph -> sectionBottom = drawParagraph(canvas, item,
+                            section.cacheParagraphStyle, section.cacheCharacterStyle,
+                            section.cacheLocalMetrics,
+                            sectionBottom, sectionLeft, sectionRight)
                 }
             }
         }
 
         return sectionBottom +
-                Size.toPixels(borderStyle.paddingBottom, localMetrics) +
-                Size.toPixels(borderStyle.borderBottom, localMetrics, useParentSize = false) +
-                Size.toPixels(borderStyle.marginBottom, localMetrics)
+                Size.toPixels(section.borderStyle.paddingBottom,
+                        this.deviceMetrics, section.cacheLocalMetrics) +
+                Size.toPixels(section.borderStyle.borderBottom,
+                        this.deviceMetrics, section.cacheLocalMetrics, useParentSize = false) +
+                Size.toPixels(section.borderStyle.marginBottom,
+                        this.deviceMetrics, section.cacheLocalMetrics)
     }
 
     /**
@@ -200,47 +224,42 @@ open class DocumentView(context: Context,
     open fun drawParagraph(canvas: Canvas?, paragraph: Paragraph,
         parentParagraphStyle: ParagraphStyle,
         parentCharacterStyle: CharacterStyle,
+        parentLocalMetrics: Size.LocalMetrics,
         clipTop: Float, clipLeft: Float, clipRight: Float
     ): Float {
 
-        val borderStyle = paragraph.borderStyle
-        val paragraphStyle = parentParagraphStyle
-                .clone()
+        paragraph.cacheParagraphStyle
+                .copy(parentParagraphStyle)
                 .attach(paragraph.paragraphStyle)
-        val characterStyle = parentCharacterStyle
-                .clone()
-                .attach(paragraph.characterStyle, this.deviceMetrics.scaledDensity)
 
-        // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
-        // (если они указаны в em, ratio и eh). Размеры уже рассчитаны с учётом density
-        // и scaledDensity
-        val (paragraphFont, fontMetrics) =
-                characterStyle2TextPaint(characterStyle, this.textPaint)
-        val localMetrics = Size.LocalMetrics(this.deviceMetrics,
-                getFontSize(characterStyle, paragraphFont.scale),
-                fontMetrics.descent - fontMetrics.ascent + fontMetrics.leading,
-                clipRight - clipLeft)
+        paragraph.cacheCharacterStyle
+                .copy(parentCharacterStyle)
+                .attach(paragraph.characterStyle, this.deviceMetrics, parentLocalMetrics)
 
-        // Размер шрифта и ширина родителя - параметры, необходимые для рассчёта размеров
-        // (если они указаны в em и %). Размеры рассчитаны уже с учётом density и scaledDensity
+        // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
+        // Размеры уже рассчитаны с учётом density и scaledDensity
+        characterStyle2TextPaint(paragraph.cacheCharacterStyle, paragraph.cacheLocalMetrics)
+        paragraph.cacheLocalMetrics.parentSize = clipRight - clipLeft
 
         // Границы абзаца (нижней границы нет, мы её вычисляем)
         val (paragraphTop, paragraphLeft, paragraphRight) =
-                getInnerBoundary(clipTop, clipLeft, clipRight, borderStyle, localMetrics)
-        var paragraphBottom = paragraphTop +
-                Size.toPixels(paragraphStyle.spaceBefore, localMetrics)
+                getInnerBoundary(clipTop, clipLeft, clipRight, paragraph.borderStyle,
+                        this.deviceMetrics, paragraph.cacheLocalMetrics)
+        var paragraphBottom = paragraphTop + Size.toPixels(
+                paragraph.cacheParagraphStyle.spaceBefore,
+                this.deviceMetrics, paragraph.cacheLocalMetrics)
 
         val baselineLeft by lazy {
             if (this.baselineMode == Baseline.PARAGRAPH) {
-                paragraphLeft - Size.toPixels(borderStyle.paddingLeft, localMetrics,
-                        horizontal = true)
+                paragraphLeft - Size.toPixels(paragraph.borderStyle.paddingLeft,
+                        this.deviceMetrics, paragraph.cacheLocalMetrics, horizontal = true)
             } else 0f
         }
 
         val baselineRight by lazy {
             if (this.baselineMode == Baseline.PARAGRAPH) {
-                paragraphRight + Size.toPixels(borderStyle.paddingRight, localMetrics,
-                        horizontal = true)
+                paragraphRight + Size.toPixels(paragraph.borderStyle.paddingRight,
+                        this.deviceMetrics, paragraph.cacheLocalMetrics, horizontal = true)
             } else this.width.toFloat()
         }
 
@@ -249,44 +268,45 @@ open class DocumentView(context: Context,
 
             val parser = StringParser(paragraph.text)
 
-            val leftIndent = Size.toPixels(paragraphStyle.leftIndent, localMetrics,
-                    horizontal = true)
-            val rightIndent = Size.toPixels(paragraphStyle.rightIndent, localMetrics,
-                    horizontal = true)
-            val firstLeftIndent = Size.toPixels(paragraphStyle.firstLeftIndent, localMetrics,
-                    horizontal = true)
-            val firstRightIndent = Size.toPixels(paragraphStyle.firstRightIndent, localMetrics,
-                    horizontal = true)
+            val leftIndent = Size.toPixels(
+                    paragraph.cacheParagraphStyle.leftIndent, this.deviceMetrics,
+                    paragraph.cacheLocalMetrics, horizontal = true)
+            val rightIndent = Size.toPixels(
+                    paragraph.cacheParagraphStyle.rightIndent, this.deviceMetrics,
+                    paragraph.cacheLocalMetrics, horizontal = true)
+            val firstLeftIndent = Size.toPixels(
+                    paragraph.cacheParagraphStyle.firstLeftIndent, this.deviceMetrics,
+                    paragraph.cacheLocalMetrics, horizontal = true)
+            val firstRightIndent = Size.toPixels(
+                    paragraph.cacheParagraphStyle.firstRightIndent, this.deviceMetrics,
+                    paragraph.cacheLocalMetrics, horizontal = true)
 
             val paragraphWidth = paragraphRight - paragraphLeft
             val lineWidth = paragraphWidth - leftIndent - rightIndent
 
-//            this.log.warning("parentWidth=$parentWidth " +
-//                             "paragraphWidth=$paragraphWidth " +
-//                             "lineWidth=$lineWidth " +
-//                             "leftIndent=$leftIndent " +
-//                             "rightIndent=$rightIndent " +
-//                             "firstLeftIndent=$firstLeftIndent " +
-//                             "firstRightIndent=$firstRightIndent")
+//            this.log.warning("parentWidth=${paragraph.cacheLocalMetrics.parentSize} " +
+//                    "paragraphWidth=$paragraphWidth " +
+//                    "lineWidth=$lineWidth " +
+//                    "leftIndent=$leftIndent " +
+//                    "rightIndent=$rightIndent " +
+//                    "firstLeftIndent=$firstLeftIndent " +
+//                    "firstRightIndent=$firstRightIndent")
 
             var width = 0f
-            var baseline: Float
             var isFirst = true
             var first = 0
             var isFirstLine = true
-            var lastSegmentFontMetrics: Paint.FontMetrics? = null
-//            var lastNormalAscent: Float = 0f
-//            var lastNormalDescent: Float = 0f
-//
+
             this.segments.clear()
 
             // Парсим строку абзаца
             while (!parser.eof()) {
                 // Находим в тексте очередной сегмент с одним стилем
-                val segmentCharacterStyle =
-                        parseNextSegment(parser, paragraph, characterStyle)
-                val (segmentFont, segmentFontMetrics) =
-                        characterStyle2TextPaint(segmentCharacterStyle, this.textPaint)
+                val segmentCharacterStyle = paragraph.cacheCharacterStyle.clone()
+                paragraph.cacheSegmentLocalMetrics.copy(paragraph.cacheLocalMetrics)
+
+                val segmentFont = parseNextSegment(parser, paragraph,
+                        segmentCharacterStyle, paragraph.cacheSegmentLocalMetrics)
 
                 // Разбиваем этот сегмент на более мелкие сегменты по пробелам и знакам переноса
 
@@ -331,43 +351,17 @@ open class DocumentView(context: Context,
                         segmentEnd = inParser.pos
                     }
 
-                    val baselineShift = segmentCharacterStyle.baselineShift.toPixels(
-                            localMetrics, useParentSize = false)
+                    // Смещение уже приводится в attach() (parseNextSegment()) к PX
+                    val leading = segmentCharacterStyle.leading
+                            ?.takeIf { it.isNotAuto() }
+                            ?.toPixels(
+                                    this.deviceMetrics, paragraph.cacheSegmentLocalMetrics,
+                                    useParentSize = false)
 
-                    var ascent: Float
-                    var descent: Float
-
-                    // Рассчитываем верхнюю и нижнюю границы и смещение базовой линии
-                    // в зависимости от выравнивания по вертикали
-                    if (segmentCharacterStyle.verticalAlign == CharacterStyle.VAlign.TOP &&
-                            lastSegmentFontMetrics != null) {
-                        ascent = lastSegmentFontMetrics.ascent + baselineShift
-                        descent = ascent - segmentFontMetrics.ascent + segmentFontMetrics.descent +
-                                segmentFontMetrics.leading
-                        segmentCharacterStyle.baselineShift =
-                                Size.px(ascent - segmentFontMetrics.ascent)
-                    } else if (segmentCharacterStyle.verticalAlign ==
-                            CharacterStyle.VAlign.BOTTOM &&
-                            lastSegmentFontMetrics != null) {
-                        descent = lastSegmentFontMetrics.descent + baselineShift
-                        ascent = descent + segmentFontMetrics.ascent - segmentFontMetrics.descent -
-                                segmentFontMetrics.leading
-                        segmentCharacterStyle.baselineShift =
-                                Size.px(descent - segmentFontMetrics.descent)
-                    } else {
-                        ascent = segmentFontMetrics.ascent + baselineShift
-                        descent = segmentFontMetrics.descent + segmentFontMetrics.leading +
-                                baselineShift
-
-                        if (segmentCharacterStyle.nullSizeEffect != true) {
-                            lastSegmentFontMetrics = segmentFontMetrics
-                        }
-                    }
-
-                    if (segmentCharacterStyle.nullSizeEffect == true) {
-                        ascent = 0f
-                        descent = 0f
-                    }
+                    val ascent = paragraph.cacheSegmentLocalMetrics.fontAscent -
+                                segmentCharacterStyle.baselineShift.size
+                    val descent = paragraph.cacheSegmentLocalMetrics.fontDescent +
+                                segmentCharacterStyle.baselineShift.size
 
                     val segment = Segment(
                             isFirst = isFirst,
@@ -378,6 +372,7 @@ open class DocumentView(context: Context,
                             font = segmentFont,
                             ascent = ascent,
                             descent = descent,
+                            leading = leading,
                             spacesWidth = if (!isFirst) {
                                 this.textPaint.measureText(paragraph.text,
                                         inParser.start - spaces, inParser.start)
@@ -390,6 +385,13 @@ open class DocumentView(context: Context,
                             eol = withEol
                     )
 
+                    this.log.warning("\"${paragraph.text.toString().substring(segment.start,
+                            segment.end)}\" " +
+                            "ascent=$ascent " +
+                            "descent=$descent " +
+                            "leading=$leading"
+                    )
+
                     var parsed = false // В некоторых случаях надо будет делать два прохода
 
                     while (!parsed) {
@@ -399,11 +401,14 @@ open class DocumentView(context: Context,
                                 if (isFirstLine) firstLeftIndent + firstRightIndent
                                 else 0f)
 
-//                        this.log.warning("curLineWidth=$curLineWidth " +
-//                                         "lineWidth=$lineWidth " +
-//                                         "isFirstLine=$isFirstLine " +
-//                                         "firstLeftIndent=$firstLeftIndent " +
-//                                         "firstRightIndent=$firstRightIndent")
+//                        this.log.warning("\"${paragraph.text.toString().substring(segment.start,
+//                                segment.end)}\" " +
+//                                "curLineWidth=$curLineWidth " +
+//                                "lineWidth=$lineWidth " +
+//                                "isFirstLine=$isFirstLine " +
+//                                "firstLeftIndent=$firstLeftIndent " +
+//                                "firstRightIndent=$firstRightIndent " +
+//                                "textPaint.size=${textPaint.textSize}")
 
                         val out = curLineWidth < width +
                                 segment.spacesWidth + segment.textWidth
@@ -415,6 +420,16 @@ open class DocumentView(context: Context,
                             this.segments.add(segment)
                             parsed = true
                         }
+
+//                        this.log.warning("width=$width " +
+//                                "isFirst=${segment.isFirst} " +
+//                                "eol=${segment.eol} " +
+//                                "out=$out " +
+//                                "spacesWidth=${segment.spacesWidth} " +
+//                                "textWidth=${segment.textWidth} " +
+//                                "fontSize=${segmentCharacterStyle.size.size} " +
+//                                "parsed=$parsed " +
+//                                "lm.fontsize=${paragraph.cacheSegmentLocalMetrics.fontSize}")
 
                         if (out || segment.end == parser.end || segment.eol) {
 
@@ -494,6 +509,7 @@ open class DocumentView(context: Context,
                                             font = segment.font,
                                             ascent = segment.ascent,
                                             descent = segment.descent,
+                                            leading = segment.leading,
                                             spacesWidth = 0f,
                                             textWidth = divWidth,
                                             hyphenWidth = 0f,
@@ -514,17 +530,55 @@ open class DocumentView(context: Context,
                             }
 
                             // Устанавливаем базовую линию для всей строки
-                            ascent = 0f
-                            descent = 0f
+                            var fullAscent = 0f
+                            var fullDescent = 0f
+                            var maxAscent = 0f
+                            var maxDescent = 0f
+                            var maxLeading = 0f
+                            var isAutoLeading = false
 
                             for (i in first..last) {
                                 val s = this.segments[i]
-                                ascent = min(ascent, s.ascent + s.baseline)
-                                descent = max(descent, s.descent + s.baseline)
+
+                                fullAscent = max(fullAscent, s.ascent)
+                                fullDescent = max(fullDescent, s.descent)
+
+                                if (s.leading != null) {
+                                    maxLeading = max(maxLeading, s.leading)
+                                } else {
+                                    maxAscent = max(maxAscent, s.ascent)
+                                    maxDescent = max(maxDescent, s.descent)
+                                    isAutoLeading = true
+                                }
                             }
 
-                            baseline = round(paragraphBottom - ascent)
-                            paragraphBottom = round(baseline + descent)
+                            // Варианты расчёта базовой линии:
+                            // 1) Первая строка в документе (this.baseline == null). Интерлиньяж
+                            //    не учитывается, отступ отсчитывается по ascent.
+                            // 2) Все символы в строке имеют заданный интерлиньяж
+                            //    (isAutoLeading == false), только его и учитываем.
+                            // 3) В строке есть символы и с автоматическим интерлиньяжем и
+                            //    с установленным. Рассчитываем по максимальному интерлиньяжу.
+                            var baseline = when {
+                                this.baseline == null -> paragraphBottom + fullAscent
+                                !isAutoLeading -> this.baseline!! + maxLeading
+                                else -> {
+                                    max(paragraphBottom + maxAscent,
+                                            this.baseline!! + maxLeading)
+                                }
+                            }
+
+                            this.log.warning("this.baseline=${this.baseline} " +
+                                    "baseline=$baseline " +
+                                    "maxLeading=$maxLeading " +
+                                    "maxAscent=$maxAscent " +
+                                    "maxDescent=$maxDescent " +
+                                    "fullDescent=$fullDescent"
+                            )
+
+                            paragraphBottom = round(baseline + fullDescent)
+                            baseline = round(baseline)
+                            this.baseline = baseline
 
                             for (i in first..last) {
                                 this.segments[i].baseline = baseline
@@ -559,8 +613,8 @@ open class DocumentView(context: Context,
 
             // Отрисовка
             if (canvas != null) {
-                drawBorder(canvas, borderStyle, paragraphTop, paragraphLeft,
-                        paragraphBottom, paragraphRight, localMetrics)
+                drawBorder(canvas, paragraph.borderStyle, paragraphTop, paragraphLeft,
+                        paragraphBottom, paragraphRight, paragraph.cacheLocalMetrics)
 
                 isFirstLine = true
                 var leftOfLine: Float
@@ -586,13 +640,13 @@ open class DocumentView(context: Context,
                     // Т.к. текст разбит на слова, то мы не часто будем встречаться со сменой
                     // параметров шрифта. Незачем тогда и устанавливать их каждый раз заново
                     if (segment.characterStyle !== lastCharacterStyle) {
-                        characterStyle2TextPaint(segment.characterStyle, this.textPaint)
+                        characterStyle2TextPaint(segment.characterStyle)
                     }
                     lastCharacterStyle = segment.characterStyle
 
                     // Начало новой строки
                     if (segment.isFirst) {
-                        var align = paragraphStyle.align
+                        var align = paragraph.cacheParagraphStyle.align
                         spaceK = 1f
                         leftOfLine = paragraphLeft + leftIndent
                         rightOfLine = paragraphRight - rightIndent
@@ -600,11 +654,11 @@ open class DocumentView(context: Context,
                         if (isFirstLine) {
                             leftOfLine += firstLeftIndent
                             rightOfLine -= firstRightIndent
-                            paragraphStyle.firstAlign?.also { align = it }
+                            paragraph.cacheParagraphStyle.firstAlign?.also { align = it }
                             isFirstLine = false
                         } else if (segment === lastFirstSegment) {
-                            if (paragraphStyle.lastAlign != null)
-                                align = paragraphStyle.lastAlign
+                            if (paragraph.cacheParagraphStyle.lastAlign != null)
+                                align = paragraph.cacheParagraphStyle.lastAlign
                             else if (align == ParagraphStyle.Align.JUSTIFY) {
                                 align = ParagraphStyle.Align.LEFT
                             }
@@ -660,77 +714,108 @@ open class DocumentView(context: Context,
                     val withHyphen = i == lastSegmentIndex &&
                             this.segments[lastSegmentIndex].hyphenWidth != 0f
 
-                    val baselineShift = segment.characterStyle.baselineShift.toPixels(
-                            localMetrics, useParentSize = false)
+                    // Смещение уже приведено к PX
+                    val baselineShift = segment.characterStyle.baselineShift.size
 
                     x += drawText(canvas, paragraph.text, segment.start, segment.end,
-                            x, segment.baseline + baselineShift,
-                            this.textPaint)
+                            x, segment.baseline + baselineShift, this.textPaint)
 
                     if (withHyphen) {
                         x += drawText(canvas, segment.font.hyphen.toString(),
-                                x, segment.baseline + baselineShift,
-                                this.textPaint)
+                                x, segment.baseline + baselineShift, this.textPaint)
                     }
                 }
             }
         }
 
         return paragraphBottom +
-                Size.toPixels(paragraphStyle.spaceAfter, localMetrics, useParentSize = false) +
-                Size.toPixels(borderStyle.paddingBottom, localMetrics) +
-                Size.toPixels(borderStyle.borderBottom, localMetrics, useParentSize = false) +
-                Size.toPixels(borderStyle.marginBottom, localMetrics)
+                Size.toPixels(paragraph.cacheParagraphStyle.spaceAfter, this.deviceMetrics,
+                        paragraph.cacheLocalMetrics, useParentSize = false) +
+                Size.toPixels(paragraph.borderStyle.paddingBottom, this.deviceMetrics,
+                        paragraph.cacheLocalMetrics) +
+                Size.toPixels(paragraph.borderStyle.borderBottom, this.deviceMetrics,
+                        paragraph.cacheLocalMetrics, useParentSize = false) +
+                Size.toPixels(paragraph.borderStyle.marginBottom, this.deviceMetrics,
+                        paragraph.cacheLocalMetrics)
     }
 
     private fun parseNextSegment(parser: StringParser, paragraph: Paragraph,
-        characterStyle: CharacterStyle
-    ): CharacterStyle {
+        characterStyle: CharacterStyle, localMetrics: Size.LocalMetrics
+    ): Font {
         parser.start()
 
         val start = parser.start
         var end = parser.end
-        val spanCharacterStyle = characterStyle.clone()
+        var font: Font = characterStyle2TextPaint(characterStyle, localMetrics)
 
         for (span in paragraph.spans) {
             if (span.start > start) {
                 end = min(end, span.start)
             } else if (span.end > start) {
-                spanCharacterStyle.attach(span.characterStyle, this.deviceMetrics.scaledDensity)
+                characterStyle.attach(span.characterStyle, this.deviceMetrics, localMetrics)
+                font = characterStyle2TextPaint(characterStyle, localMetrics)
                 end = min(end, span.end)
             }
         }
 
         parser.pos = end
 
-        return spanCharacterStyle
+        return font
     }
 
     /**
      * Установка параметров textPaint из стиля characterStyle.
      */
     internal fun characterStyle2TextPaint(characterStyle: CharacterStyle,
-        textPaint: TextPaint
-    ): Pair<Font, Paint.FontMetrics> {
+        localMetrics: Size.LocalMetrics? = null
+    ): Font {
 
-        textPaint.reset()
-        textPaint.isAntiAlias = true
+        this.textPaint.reset()
+        this.textPaint.isAntiAlias = true
 
         val (font, getFontType) = getFont(characterStyle)
 
         if (getFontType != GetFontType.BY_FULL_NAME) {
-            characterStyle.bold?.also { textPaint.isFakeBoldText = it }
-            characterStyle.italic?.also { textPaint.textSkewX = if (it) -0.18f else 0f }
+            characterStyle.bold?.also { this.textPaint.isFakeBoldText = it }
+            characterStyle.italic?.also { this.textPaint.textSkewX = if (it) -0.18f else 0f }
         }
 
-        textPaint.typeface = font.typeface
-        textPaint.textSize = getFontSize(characterStyle, font.scale)
-        textPaint.textScaleX = characterStyle.scaleX
-        characterStyle.color?.also { textPaint.color = it }
-        characterStyle.strike?.also { textPaint.isStrikeThruText = it }
-        characterStyle.underline?.also { textPaint.isUnderlineText = it }
+        this.textPaint.typeface = font.typeface
 
-        return Pair(font, font.correctFontMetrics(textPaint.fontMetrics))
+        // Размер шрифта уже должен был быть приведён к абсолютному значению, иначе мы не сможем
+        // его здесь вычислить. Структура localMetrics передаётся в эту функцию не для
+        // использования, а для заполнения
+        val fontSize =
+                if (characterStyle.size.isAbsolute()) {
+                    characterStyle.size.toPixels(this.deviceMetrics,
+                            0f, 0f, 0f)
+                } else {
+                    1f
+                }
+
+        this.textPaint.textSize = fontSize * font.scale
+
+        this.textPaint.textScaleX = characterStyle.scaleX
+        characterStyle.color?.also { this.textPaint.color = it }
+        characterStyle.strike?.also { this.textPaint.isStrikeThruText = it }
+        characterStyle.underline?.also { this.textPaint.isUnderlineText = it }
+
+        localMetrics?.also {
+            val fontMetrics = font.correctFontMetrics(this.textPaint.fontMetrics)
+
+            it.fontSize = fontSize
+            it.fontAscent = fontMetrics.leading - fontMetrics.ascent
+            it.fontDescent = fontMetrics.descent
+            it.parentSize = null
+
+            if (characterStyle.baselineShiftAdd.size != 0f) {
+                characterStyle.baselineShift = Size.px(characterStyle.baselineShift.size +
+                        characterStyle.baselineShiftAdd.toPixels(this.deviceMetrics, it))
+                characterStyle.baselineShiftAdd = Size.px(0f)
+            }
+        }
+
+        return font
     }
 
     /**
@@ -742,27 +827,32 @@ open class DocumentView(context: Context,
      * @param left
      * @param bottom
      * @param right Положение объекта (!) на канвасе.
-     * @param metrics Параметры для вычисления отступов и размеров рамки.
+     * @param localMetrics Параметры для вычисления отступов и размеров рамки.
      */
     internal fun drawBorder(canvas: Canvas, borderStyle: BorderStyle,
-        top: Float, left: Float, bottom: Float, right: Float, metrics: Size.LocalMetrics
+        top: Float, left: Float, bottom: Float, right: Float,
+        localMetrics: Size.LocalMetrics
     ) {
 
-        val inTop = top - Size.toPixels(borderStyle.paddingTop, metrics)
-        val outTop = inTop - Size.toPixels(borderStyle.borderTop, metrics)
+        val inTop = top - Size.toPixels(borderStyle.paddingTop,
+                this.deviceMetrics, localMetrics)
+        val outTop = inTop - Size.toPixels(borderStyle.borderTop,
+                this.deviceMetrics, localMetrics)
 
-        val inBottom = bottom + Size.toPixels(borderStyle.paddingBottom, metrics)
-        val outBottom = inBottom + Size.toPixels(borderStyle.borderBottom, metrics)
+        val inBottom = bottom + Size.toPixels(borderStyle.paddingBottom,
+                this.deviceMetrics, localMetrics)
+        val outBottom = inBottom + Size.toPixels(borderStyle.borderBottom,
+                this.deviceMetrics, localMetrics)
 
-        val inLeft = left - Size.toPixels(borderStyle.paddingLeft, metrics,
-                horizontal = true)
-        val outLeft = inLeft - Size.toPixels(borderStyle.borderLeft, metrics,
-                horizontal = true)
+        val inLeft = left - Size.toPixels(borderStyle.paddingLeft,
+                this.deviceMetrics, localMetrics, horizontal = true)
+        val outLeft = inLeft - Size.toPixels(borderStyle.borderLeft,
+                this.deviceMetrics, localMetrics, horizontal = true)
 
-        val inRight = right + Size.toPixels(borderStyle.paddingRight, metrics,
-                horizontal = true)
-        val outRight = inRight + Size.toPixels(borderStyle.borderRight, metrics,
-                horizontal = true)
+        val inRight = right + Size.toPixels(borderStyle.paddingRight,
+                this.deviceMetrics, localMetrics, horizontal = true)
+        val outRight = inRight + Size.toPixels(borderStyle.borderRight,
+                this.deviceMetrics, localMetrics, horizontal = true)
 
         // Фон
         if (borderStyle.backgroundColor != 0) {
@@ -851,7 +941,7 @@ open class DocumentView(context: Context,
      * с параметром GetFontType.BY_SHORT_NAME.
      * 3) Если шрифт не найден, то шрифт по-умолчанию с параметром GetFontType.DEFAULT.
      */
-    internal fun getFont(characterStyle: CharacterStyle): Pair<Font, GetFontType> {
+    private fun getFont(characterStyle: CharacterStyle): Pair<Font, GetFontType> {
         var getFontType = GetFontType.BY_FULL_NAME
         var font = this.fontList[getFontFullName(characterStyle)]
 
@@ -870,23 +960,9 @@ open class DocumentView(context: Context,
     }
 
     /**
-     * Размер шрифта из characterStyle с учётом масштабирования. Только для размеров, уже
-     * приведённых к абсолютной величине из em и ratio.
-     */
-    internal fun getFontSize(characterStyle: CharacterStyle, scale: Float): Float {
-        return scale *
-                if (characterStyle.size.isAbsolute()) {
-                    characterStyle.size.toPixels(this.deviceMetrics, 0f, 0f)
-                } else {
-                    1f
-                }
-    }
-
-    /**
      * Рисование текста с возможностью рисования базовой линии.
      */
-    internal fun drawText(canvas: Canvas, text: CharSequence,
-        x: Float, y: Float, paint: Paint,
+    internal fun drawText(canvas: Canvas, text: CharSequence, x: Float, y: Float, paint: Paint,
         drawBaseline: Boolean = false
     ): Float {
 
@@ -1201,23 +1277,29 @@ open class DocumentView(context: Context,
      * Вычисление внутренних границ секций и параграфов.
      */
     private fun getInnerBoundary(clipTop: Float, clipLeft: Float, clipRight: Float,
-        borderStyle: BorderStyle, metrics: Size.LocalMetrics
+        borderStyle: BorderStyle, deviceMetrics: Size.DeviceMetrics, localMetrics: Size.LocalMetrics
     ): Triple<Float, Float, Float> {
         val top = clipTop +
-                Size.toPixels(borderStyle.marginTop, metrics) +
-                Size.toPixels(borderStyle.borderTop, metrics,
-                        useParentSize = false) +
-                Size.toPixels(borderStyle.paddingTop, metrics)
+                Size.toPixels(borderStyle.marginTop,
+                        deviceMetrics, localMetrics) +
+                Size.toPixels(borderStyle.borderTop,
+                        deviceMetrics, localMetrics, useParentSize = false) +
+                Size.toPixels(borderStyle.paddingTop,
+                        deviceMetrics, localMetrics)
         val left = clipLeft +
-                Size.toPixels(borderStyle.marginLeft, metrics, horizontal = true) +
-                Size.toPixels(borderStyle.borderLeft, metrics, horizontal = true,
-                        useParentSize = false) +
-                Size.toPixels(borderStyle.paddingLeft, metrics, horizontal = true)
+                Size.toPixels(borderStyle.marginLeft,
+                        deviceMetrics, localMetrics, horizontal = true) +
+                Size.toPixels(borderStyle.borderLeft,
+                        deviceMetrics, localMetrics, horizontal = true, useParentSize = false) +
+                Size.toPixels(borderStyle.paddingLeft,
+                        deviceMetrics, localMetrics, horizontal = true)
         val right = clipRight -
-                Size.toPixels(borderStyle.marginRight, metrics, horizontal = true) -
-                Size.toPixels(borderStyle.borderRight, metrics, horizontal = true,
-                        useParentSize = false) -
-                Size.toPixels(borderStyle.paddingRight, metrics, horizontal = true)
+                Size.toPixels(borderStyle.marginRight,
+                        deviceMetrics, localMetrics, horizontal = true) -
+                Size.toPixels(borderStyle.borderRight,
+                        deviceMetrics, localMetrics, horizontal = true, useParentSize = false) -
+                Size.toPixels(borderStyle.paddingRight,
+                        deviceMetrics, localMetrics, horizontal = true)
 
         return Triple(top, left, right)
     }
