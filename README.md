@@ -429,89 +429,109 @@ docView.baselineMode = DocumentView.Baseline.PARAGRAPH
 Базовые линии рассчитываются автоматически по максимальным размерам задействованных в строке символов с учётом их смещений относительно базовой линии (`baselineShift`):
 
 ```kotlin
-val string = "Lorem ipsum\n" +
-        "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do " +
-        "eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
+val string = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, " +
+        "sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
         "Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris " +
         "ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.\n" +
-        "Duis1 aute2 iru~re3 do~lor4 in5 rep~re~hen~de~rit6 in7 vo~lup~ta~te8 ve~lit9 es~se10 " +
-        "cil~lum11 do~lo~re12 eu13 fu~gi~at14 nul~la15 pa~ria~tur16.\n" +
-        "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa* qui " +
-        "of~fi~cia de~se~runt mol~lit anim id est la~bo~rum."
+        "Duis1 aute2 iru~re3 do~lor4 in5 rep~re~hen~de~rit6 in7 vo~lup~ta~te8 " +
+        "ve~lit9 es~se10 cil~lum11 do~lo~re12 eu13 fu~gi~at14 nul~la15 " +
+        "pa~ria~tur16.\n" +
+        "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent1, sunt in cul~pa* qui " +
+        "of~fi~cia de~se~runt mol~lit anim2 id est la~bo~rum."
 docView.document.setText(string.replace('~', '\u00AD'))
 
 docView.baselineMode = DocumentView.Baseline.VIEW
 docView.baselineColor = Color.rgb(0x4B77BE)
 
+docView.document.borderStyle
+        .setPadding(Size.dp(0f), Size.dp(8f))
+        .setBorder(Border.px(1.0f, Color.BLACK))
+        .setMargin(Size.dp(4f))
+
 docView.document.characterStyle
-        .setSize(Size.dp(18f))
+        .setSize(Size.sp(18f))
 docView.document.paragraphStyle
         .setAlign(ParagraphStyle.Align.JUSTIFY)
         .setFirstLeftIndent(Size.dp(24f))
 
-docView.document[0].characterStyle
-        .setSize(Size.em(1.6f))
-docView.document[0].paragraphStyle
-        .setAlign(ParagraphStyle.Align.CENTER)
-        .setFirstLeftIndent(Size.dp(0f))
-        .setBottomIndent(Size.em(0.5f))
-docView.document[1].paragraphStyle
-        .setFirstLeftIndent(Size.em(0f))
-
-docView.document[2]
+docView.document[1]
         .addWordSpan(10, CharacterStyle(
                 size = Size.em(1.4f)))
+docView.document[2]
+        .addSpan(Regex("""\d+"""), CharacterStyle(
+                baselineShift = Size.em(0.33f),
+                size = Size.em(0.58f)))
 docView.document[3]
-        .addSpan(Regex("""\d+"""), -1, CharacterStyle(
-                baselineShift = Size.em(0.25f),
-                size = Size.em(0.7f)))
-docView.document[4]
-        .addSpan(Regex("""\*"""), CharacterStyle(
-                baselineShift = Size.em(-0.4f),
-                size = Size.em(0.85f)))
+        .addSpan(Regex("""\*|\d"""), CharacterStyle(
+                baselineShift = Size.em(-0.5f),
+                size = Size.em(0.58f)))
 ```
 
 ![screenshot_11_2.png](docs/screenshot_11_2.png)
 
-Это удобно, но, как видно на этом примере, не всегда выглядит красиво - высота некоторых строк увеличилась (отмечены красным). Чтобы исправить верхние и нижние индексы можно подобрать экспериментальным путём размер символов и смещение базовой линии. А можно с помощью свойства `verticalAlign` выравнять их по верхней или нижней границе рядом расположенного символа (первого слева, выровненного по базовой линии). Но шрифт всё равно лучше уменьшить:
+Это удобно, но, как видно на этом примере, не всегда выглядит красиво - расстояние между некоторыми строками увеличилось (отмечено красным). Чтобы исправить верхние и нижние индексы можно подобрать экспериментальным путём размер символов и смещение базовой линии. А можно с помощью свойства `verticalAlign` выравнять их по верхней или нижней границе базового шрифта, тогда они точно не выйдут за границы и не приведут к увеличению строки:
 
 ```kotlin
-docView.document[3]
-        .addSpan(Regex("""\d+"""), -1, CharacterStyle(
+docView.document[2]
+        .addSpan(Regex("""\d+"""), CharacterStyle(
                 verticalAlign = CharacterStyle.VAlign.BOTTOM,
-                size = Size.em(0.6f)))
-docView.document[4]
-        .addSpan(Regex("""\*"""), CharacterStyle(
+                size = Size.em(0.58f)))
+docView.document[3]
+        .addSpan(Regex("""\*|\d"""), CharacterStyle(
                 verticalAlign = CharacterStyle.VAlign.TOP,
-                size = Size.em(0.7f)))
+                size = Size.em(0.58f)))
 ```
 
 ![screenshot_11_3.png](docs/screenshot_11_3.png)
 
-Можно оставить предыдущие размеры и смещение базовой линии, но убрать участки из рассчёта размера строки, установив свойство `nullSizeEffect`. Но в этом случае возможно пересечение с верхними или нижними знаками, поэтому ответственность за такое решение лежит на Вас:
+Для верхнего индекса получилось очень хорошо, зато нижний индекс поднялся слишком высоко. И такой компромисс может нас не устроить. Можно опустить ниже. Значение `VAlign.BOTTOM` служит для выравнивания нижней границы символа по нижней границе базового шрифта. Значение `VAlign.BASELINE_TO_BOTTOM` выравнивает базовую линию символа по границе базового шрифта. Но разумеется, расстояние между строками снова увеличится:
 
 ```kotlin
 docView.document[2]
-        .addWordSpan(10, CharacterStyle(
-                size = Size.em(1.4f),
-                nullSizeEffect = true))
-docView.document[3]
         .addSpan(Regex("""\d+"""), CharacterStyle(
-                baselineShift = Size.em(0.25f),
-                size = Size.em(0.7f),
-                nullSizeEffect = true))
-docView.document[4]
-        .addSpan(Regex("""\*"""), CharacterStyle(
-                baselineShift = Size.em(-0.4f),
-                size = Size.em(0.85f),
-                nullSizeEffect = true))
+                verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
+                size = Size.em(0.58f)))
 ```
 
 ![screenshot_11_4.png](docs/screenshot_11_4.png)
 
-Строки получились одинакового размера, но слово "laboris" и сноска "\*" чудом не пересекаются со строкой выше, а числам повезло, что символы снизу не имеют диакритических знаков. Но если чудо и везение запланированы, то почему бы и нет!
+И что-то всё ещё нужно сделать с увеличенным шрифтом во втором абзаце. Можно убрать эти участки вообще из рассчёта размера строки, установив интерлиньяж равным 0:
 
-Есть ещё варианты решения проблемы, но о них позже.
+```kotlin
+docView.document[1]
+        .addWordSpan(10, CharacterStyle(
+                size = Size.em(1.4f),
+                leading = Size.dp(0f)))
+docView.document[2]
+        .addSpan(Regex("""\d+"""), CharacterStyle(
+                verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
+                size = Size.em(0.58f),
+                leading = Size.dp(0f)))
+```
+
+![screenshot_11_5.png](docs/screenshot_11_5.png)
+
+Только бы не оказалось так, что в строке не окажется ни одного символа с ненулевым размером! Строки слипнутся! Избежать этого можно, установив интерлиньяж равным высоте базового шрифта через `Size.ratio()`. Если в абзацных отступах `ratio` это доля от ширины родительской секции, в шрифтах - доля от кегля базового шрифта (тоже самое, что `em`), то при вычислении интерлиньяжа `ratio` это доля от высоты (не кегля!) базового (а не текущего!) шрифта (`em` и `fh` будут вычисляться от размера текущего шрифта):
+
+```kotlin
+docView.document[1]
+        .addWordSpan(10, CharacterStyle(
+                size = Size.em(1.4f),
+                leading = Size.ratio(1f)))
+docView.document[2]
+        .addSpan(Regex("""\d+"""), CharacterStyle(
+                verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
+                size = Size.em(0.58f),
+                leading = Size.ratio(1f)))
+```
+
+Расстояние между строками получилось одинаковым. Если в нижнем индексе не будут использоваться символы, спускающиеся ниже базовой линии, то получим качественный результат. Зато увеличенный шрифт не пересёкся с соседними строками только случайно. Но в этом случае остаётся только немного увеличить расстояние между строками во всём тексте, что, впрочем, всегда выглядит хорошо:
+
+```kotlin
+docView.document.characterStyle.leading = Size.fh(1.15f)
+```
+
+![screenshot_11_5.png](docs/screenshot_11_5.png)
 
 ## Секции
 
