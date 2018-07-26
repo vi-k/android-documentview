@@ -45,6 +45,7 @@ override fun onCreate(savedInstanceState: Bundle?) {
     val docView: DocumentView = findViewById(R.id.docView)
 
     docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ...")
+    
     docView.document
             .addSpan(0, 5, CharacterStyle(color = Color.RED))
             .addSpan(6, 11, CharacterStyle(bold = true))
@@ -85,6 +86,7 @@ docView.document
 
 ```kotlin
 docView.document.setText("Lorem ipsum dolor sit amet ...")
+
 docView.document
         .addWordSpan(1, 3, CharacterStyle(bold = true))
         .addWordSpan(3, 3, CharacterStyle(italic = true))
@@ -116,6 +118,7 @@ docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing eli
         "in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n" +
         "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia " +
         "deserunt mollit anim id est laborum.")
+
 docView.document[0]
         .addSpan(0, 1, CharacterStyle(color = Color.RED))
 docView.document[1]
@@ -159,6 +162,7 @@ docView.document[2].characterStyle.font = "mono"
 ```kotlin
 docView.document.setText("Lorem ipsum dolor sit amet ...\n" +
         "Lorem ipsum dolor sit amet ...")
+
 docView.document[0]
         .addWordSpan(1, 3, CharacterStyle(bold = true))
         .addWordSpan(3, 3, CharacterStyle(italic = true))
@@ -199,6 +203,7 @@ docView.document.characterStyle.font = "georgia"
 
 docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " +
         "do eiusmod tempor incididunt ut labore et dolore magna aliqua.")
+
 docView.document
         .addWordSpan(6, 8, CharacterStyle(bold = true))
         .addWordSpan(9, -1, CharacterStyle(italic = true))
@@ -217,6 +222,7 @@ docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing eli
         "aliquip ex ea commodo consequat.\n" +
         "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore " +
         "eu fugiat nulla pariatur.")
+
 docView.document[0].borderStyle
         .setPadding(Size.dp(8f))
         .setBorder(Border.dp(1f, Color.rgb(0xDC3023)))
@@ -241,6 +247,12 @@ docView.document[2].borderStyle
 Рамки могут быть разными. Сам документ также может иметь отдельную рамку:
 
 ```kotlin
+docView.document.borderStyle
+        .setPadding(Size.dp(4f))
+        .setBorder(Border.dp(4.0f, Color.rgb(0xF9690E)))
+        .setMargin(Size.dp(4f))
+        .setBackgroundColor(Color.argb(0.1f, 0xF9690E))
+
 docView.document[0].borderStyle
         .setPadding(Size.dp(8f))
         .setBorderTop(Border.dp(8f, Color.rgb(0xDC3023)))
@@ -261,12 +273,6 @@ docView.document[2].borderStyle
                 Border.dp(8f, Color.rgb(0x26C281)))
         .setMargin(Size.dp(4f))
         .setBackgroundColor(Color.argb(0.2f, 0x26C281))
-
-docView.document.borderStyle
-        .setPadding(Size.dp(4f))
-        .setBorder(Border.dp(4.0f, Color.rgb(0xF9690E)))
-        .setMargin(Size.dp(4f))
-        .setBackgroundColor(Color.argb(0.1f, 0xF9690E))
 ```
 
 ![screenshot_7_2.png](docs/screenshot_7_2.png)
@@ -353,6 +359,7 @@ docView.fontList["ponomar"] = Font(
         typeface = Typeface.createFromAsset(this.assets, "fonts/PonomarUnicode.ttf")!!)
 
 docView.document.setText("В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ")
+
 docView.document.addWordSpan(1, 4, CharacterStyle(font = "serif"))
 docView.document.addWordSpan(5, -1, CharacterStyle(font = "ponomar"))
 ```
@@ -398,6 +405,7 @@ val string = "Lorem ipsum\n" +
         "cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.\n" +
         "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui " +
         "of~fi~cia de~se~runt mol~lit anim id est la~bo~rum."
+
 docView.document.setText(string.replace('~', '\u00AD'))
 ```
 
@@ -417,7 +425,9 @@ val text = "Прї~и~ди́~те ко мнѣ̀ всѝ трꙋж~да́ю~щ
         "оу҆по~ко́ю вы̀. Воз̾~ми́~те и҆́го моѐ на се~бѐ, и҆ на~ꙋ~чи́~те~сѧ ѿ ме~нѐ, ꙗ҆́кѡ " +
         "кро́~токъ є҆́смь и҆ сми~ре́нъ се́рд~цемъ, и҆ ѡ҆б~рѧ́~ще~те по~ко́й дꙋ~ша́мъ " +
         "ва́~шымъ. И҆́го бо моѐ бла́~го, и҆ бре́~мѧ моѐ лег~ко̀ є҆́сть."
+
 docView.document.setText(text.replace('~', '\u00AD'))
+
 docView.document.characterStyle.font = "ponomar"
 docView.document.paragraphStyle
         .setFirstLeftIndent(Size.em(1f))
@@ -434,6 +444,7 @@ docView.document.addSpan(0, 1, CharacterStyle(color = Color.RED))
 ```kotlin
 val string = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, " +
         "sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
+
 docView.document.setText(string.replace('~', '\u00AD'))
 
 docView.baselineMode = DocumentView.Baseline.PARAGRAPH
@@ -455,6 +466,7 @@ val string = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, "
         "pa~ria~tur16.\n" +
         "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent1, sunt in cul~pa* qui " +
         "of~fi~cia de~se~runt mol~lit anim2 id est la~bo~rum."
+
 docView.document.setText(string.replace('~', '\u00AD'))
 
 docView.baselineMode = DocumentView.Baseline.VIEW
@@ -558,7 +570,7 @@ docView.document.characterStyle.leading = Size.fh(1.15f)
 
 ### Синхронизация текстов по базовой линии
 
-Обратите внимание! Интерлиньяж не влияет на первую строку в тексте, что вполне логично для строки, перед которой нет другой строки (между чем и чем будет тогда межстрочный интервал?). Высота первой строки всегда рассчитывается по размерам знаков, находящихся в ней. Это и выглядит достаточно хорошо, и удобно при использовании нескольких `DocumentView`, идущих друг за другом, например в [`RecyclerView`](https://developer.android.com/guide/topics/ui/layout/recyclerview) (между элементами не будет дополнительного разрыва). Но это может испортить вид, если вы хотите поставить два текста параллельно, рассчитывая, что их базовые линии будут совпадать (например, для сравнения различных переводов одного и того же текста, особенно, когда языки используют совершенно несхожие друг с другом шрифты):
+Обратите внимание! Интерлиньяж не влияет на первую строку в тексте, что вполне логично для строки, перед которой нет другой строки (между чем и чем будет тогда межстрочный интервал?). Высота первой строки всегда рассчитывается по размерам знаков, находящихся в ней. Это и выглядит достаточно хорошо, и удобно при использовании нескольких `DocumentView`, идущих друг за другом, например в `RecyclerView` (между элементами не будет дополнительного разрыва). Но это может испортить вид, если вы хотите поставить два текста параллельно, рассчитывая, что их базовые линии будут совпадать (например, для сравнения различных переводов одного и того же текста, особенно, когда языки используют совершенно несхожие друг с другом шрифты):
 
 ```kotlin
 docView.document[0]
