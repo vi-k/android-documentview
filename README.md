@@ -1,6 +1,6 @@
 # DocumentView
 
-`DocumentView` это Kotlin-виджет для Android для вывода отформатированного текста. Аналог [`TextView`](https://developer.android.com/reference/android/widget/TextView) из Android SDK с его [`Spannable`](https://developer.android.com/reference/android/text/Spannable), но с более широкими (в планах!) возможностями в части форматирования текста.
+`DocumentView` это Kotlin-виджет для Android для вывода отформатированного текста. Аналог `TextView` из Android SDK с его `Spannable`, но с более широкими (в планах!) возможностями в части форматирования текста.
 
 Работа только начата. Пока доступно только самое простое форматирование текста, но уже есть выравнивание по ширине (justification) и обработка мягких переносов.
 
@@ -236,7 +236,7 @@ docView.document[2].borderStyle
 
 ![screenshot_7.png](docs/screenshot_7.png)
 
-В примере используется класс `Color` из модуля для работы с цветом `color` ([wiki][color]). Это не [`android.graphics.Color`](https://developer.android.com/reference/android/graphics/Color), хотя можно использовать и его. И в том, и в другом случае цвет хранится в обычном `Int`.
+В примере используется класс `Color` из модуля для работы с цветом `color` ([wiki][color]). Это не `android.graphics.Color`, хотя можно использовать и его. И в том, и в другом случае цвет хранится в обычном `Int`.
 
 Рамки могут быть разными. Сам документ также может иметь отдельную рамку:
 
