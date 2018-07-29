@@ -396,17 +396,14 @@ docView.fontList["ponomar"] = Font(
 
 ```kotlin
 // Мягкие переносы для наглядности обозначаем знаком '~', затем их переводим в '\u00AD'
-val string = "Lorem ipsum\n" +
-        "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do " +
-        "eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
-        "Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris " +
-        "ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.\n" +
-        "Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se " +
-        "cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.\n" +
-        "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui " +
-        "of~fi~cia de~se~runt mol~lit anim id est la~bo~rum."
-
-docView.document.setText(string.replace('~', '\u00AD'))
+setText("""
+    |Lorem ipsum
+    |Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.
+    |Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.
+    |Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.
+    |Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui of~fi~cia de~se~runt mol~lit anim id est la~bo~rum.
+    """.trimMargin().replace('~', '\u00AD'))
+}
 ```
 
 ![screenshot_10.png](docs/screenshot_10.png)
@@ -414,25 +411,38 @@ docView.document.setText(string.replace('~', '\u00AD'))
 В некоторых языках (например, в старославянском) используется символ переноса, отличный от стандартного. Изменить это можно при загрузке шрифта:
 
 ```kotlin
-docView.fontList["ponomar"] = Font(
-        typeface = Typeface.createFromAsset(this.assets, "fonts/PonomarUnicode.ttf")!!,
-        hyphen = '_', // Символ переноса для старославянского языка
-        ascentRatio = 0.9f,
-        descentRatio = 0.9f,
-        scale = 1.2f)
+val string = "Прї~и~ди́~те ко мнѣ̀ всѝ трꙋж~да́ю~щї~и~сѧ и҆ ѡ҆б~ре~ме~не́н~нїи, и҆ а҆́зъ оу҆по~ко́ю вы̀. Воз̾~ми́~те и҆́го моѐ на се~бѐ, и҆ на~ꙋ~чи́~те~сѧ ѿ ме~нѐ, ꙗ҆́кѡ кро́~токъ є҆́смь и҆ сми~ре́нъ се́рд~цемъ, и҆ ѡ҆б~рѧ́~ще~те по~ко́й дꙋ~ша́мъ ва́~шымъ. И҆́го бо моѐ бла́~го, и҆ бре́~мѧ моѐ лег~ко̀ є҆́сть."
+        .replace('~', '\u00AD')
 
-val text = "Прї~и~ди́~те ко мнѣ̀ всѝ трꙋж~да́ю~щї~и~сѧ и҆ ѡ҆б~ре~ме~не́н~нїи, и҆ а҆́зъ " +
-        "оу҆по~ко́ю вы̀. Воз̾~ми́~те и҆́го моѐ на се~бѐ, и҆ на~ꙋ~чи́~те~сѧ ѿ ме~нѐ, ꙗ҆́кѡ " +
-        "кро́~токъ є҆́смь и҆ сми~ре́нъ се́рд~цемъ, и҆ ѡ҆б~рѧ́~ще~те по~ко́й дꙋ~ша́мъ " +
-        "ва́~шымъ. И҆́го бо моѐ бла́~го, и҆ бре́~мѧ моѐ лег~ко̀ є҆́сть."
+docView {
+    fontList["ponomar"] = Font(
+            typeface = Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+            hyphen = '_', // Символ переноса для старославянского языка
+            ascentRatio = 0.9f,
+            descentRatio = 0.9f,
+            scale = 1.2f)
 
-docView.document.setText(text.replace('~', '\u00AD'))
+    document {
+        setText(string)
 
-docView.document.characterStyle.font = "ponomar"
-docView.document.paragraphStyle
-        .setFirstLeftIndent(Size.em(1f))
-        .setAlign(ParagraphStyle.Align.JUSTIFY)
-docView.document.addSpan(0, 1, CharacterStyle(color = Color.RED))
+        borderStyle {
+            padding = Size.dp(8f)
+            border = Border.px(1.0f, Color.BLACK)
+            margin = Size.dp(4f)
+        }
+
+        characterStyle {
+            font = "ponomar"
+        }
+
+        paragraphStyle {
+            firstLeftIndent = Size.em(1f)
+            align = ParagraphStyle.Align.JUSTIFY
+        }
+
+        addSpan(0, 1, CharacterStyle(color = Color.RED))
+    }
+}
 ```
 
 ![screenshot_10_2.png](docs/screenshot_10_2.png)
