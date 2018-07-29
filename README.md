@@ -121,12 +121,6 @@ docView {
             |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
             """.trimMargin())
 
-        borderStyle {
-            padding = Size.dp(8f)
-            border = Border.px(1.0f, Color.BLACK)
-            margin = Size.dp(4f)
-        }
-
         paragraph(0) {
             addSpan(0, 1, CharacterStyle(color = Color.RED))
         }
