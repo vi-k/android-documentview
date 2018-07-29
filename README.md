@@ -444,9 +444,16 @@ docView.document.addSpan(0, 1, CharacterStyle(color = Color.RED))
 ```kotlin
 val string = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
         .replace('~', '\u00AD')
+
 docView {
     baselineMode = DocumentView.Baseline.PARAGRAPH
     document.setText(string)
+
+    borderStyle {
+        padding = Size.dp(8f)
+        border = Border.px(1.0f, Color.BLACK)
+        margin = Size.dp(4f)
+    }
 }
 ```
 
