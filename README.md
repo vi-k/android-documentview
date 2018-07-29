@@ -442,12 +442,12 @@ docView.document.addSpan(0, 1, CharacterStyle(color = Color.RED))
 В `DocumentView` можно включить режим, показывающий базовые линии. Это похоже на разлиновку в тетради:
 
 ```kotlin
-val string = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, " +
-        "sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
-
-docView.document.setText(string.replace('~', '\u00AD'))
-
-docView.baselineMode = DocumentView.Baseline.PARAGRAPH
+val string = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
+        .replace('~', '\u00AD')
+docView {
+    baselineMode = DocumentView.Baseline.PARAGRAPH
+    document.setText(string)
+}
 ```
 
 ![screenshot_11.png](docs/screenshot_11.png)
@@ -487,7 +487,6 @@ docView {
             firstLeftIndent = Size.dp(24f)
         }
 
-        // Пример 11.2
         paragraph(1) {
             addWordSpan(10, CharacterStyle(
                     size = Size.em(1.4f)))
@@ -504,6 +503,8 @@ docView {
                     baselineShift = Size.em(-0.5f),
                     size = Size.em(0.58f)))
         }
+    }
+}
 ```
 
 ![screenshot_11_2.png](docs/screenshot_11_2.png)
@@ -513,14 +514,22 @@ docView {
 Это удобно, но, как видно на этом примере, не всегда выглядит красиво - расстояние между некоторыми строками увеличилось (отмечены красным). Чтобы исправить верхние и нижние индексы, можно подобрать экспериментальным путём размер символов и смещение базовой линии. А можно с помощью свойства `verticalAlign` выравнять их по верхней или нижней границе базового шрифта, тогда они точно не выйдут за границы и не приведут к увеличению строки:
 
 ```kotlin
-docView.document[2]
-        .addSpan(Regex("""\d+"""), CharacterStyle(
-                verticalAlign = CharacterStyle.VAlign.BOTTOM,
-                size = Size.em(0.58f)))
-docView.document[3]
-        .addSpan(Regex("""\*|\d"""), CharacterStyle(
-                verticalAlign = CharacterStyle.VAlign.TOP,
-                size = Size.em(0.58f)))
+paragraph(1) {
+    addWordSpan(10, CharacterStyle(
+        size = Size.em(1.4f)))
+}
+
+paragraph(2) {
+    addSpan(Regex("""\d+"""), CharacterStyle(
+        verticalAlign = CharacterStyle.VAlign.BOTTOM,
+        size = Size.em(0.58f)))
+}
+
+paragraph(3) {
+    addSpan(Regex("""\*|\d"""), CharacterStyle(
+        verticalAlign = CharacterStyle.VAlign.TOP,
+        size = Size.em(0.58f)))
+}
 ```
 
 ![screenshot_11_3.png](docs/screenshot_11_3.png)
@@ -528,10 +537,11 @@ docView.document[3]
 Для верхнего индекса получилось очень хорошо, зато нижний индекс поднялся слишком высоко. И такой компромисс может нас не устроить. Есть способ опустить ниже, не заботясь о ручном вычислении смещения: значение `VAlign.BOTTOM` служит для выравнивания нижней границы символа по нижней границе базового шрифта, а значение `VAlign.BASELINE_TO_BOTTOM` выравнивает базовую линию символа по границе базового шрифта. Но, разумеется, пока расстояние между строками снова увеличится:
 
 ```kotlin
-docView.document[2]
-        .addSpan(Regex("""\d+"""), CharacterStyle(
-                verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
-                size = Size.em(0.58f)))
+paragraph(2) {
+    addSpan(Regex("""\d+"""), CharacterStyle(
+            verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
+            size = Size.em(0.58f)))
+}
 ```
 
 ![screenshot_11_4.png](docs/screenshot_11_4.png)
@@ -541,15 +551,18 @@ docView.document[2]
 И что-то всё ещё нужно сделать с увеличенным шрифтом во втором абзаце. Можно убрать все эти участки вообще из рассчёта размера строки, установив интерлиньяж равным `0`:
 
 ```kotlin
-docView.document[1]
-        .addWordSpan(10, CharacterStyle(
-                size = Size.em(1.4f),
-                leading = Size.dp(0f)))
-docView.document[2]
-        .addSpan(Regex("""\d+"""), CharacterStyle(
-                verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
-                size = Size.em(0.58f),
-                leading = Size.dp(0f)))
+paragraph(1) {
+    addWordSpan(10, CharacterStyle(
+            size = Size.em(1.4f),
+            leading = Size.dp(0f)))
+}
+
+paragraph(2) {
+    addSpan(Regex("""\d+"""), CharacterStyle(
+            verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
+            size = Size.em(0.58f),
+            leading = Size.dp(0f)))
+}
 ```
 
 ![screenshot_11_5.png](docs/screenshot_11_5.png)
@@ -557,44 +570,59 @@ docView.document[2]
 Только бы не оказалось так, что в строке не окажется ни одного символа с ненулевым размером! Строки слипнутся! Избежать этого можно, установив интерлиньяж равным высоте базового шрифта через `Size.ratio()`. Если в абзацных отступах `ratio` это доля от ширины родительской секции, в шрифтах - доля от кегля базового шрифта (тоже самое, что `em`), то при вычислении интерлиньяжа `ratio` это доля от высоты (не кегля!) базового (а не текущего!) шрифта (`em` и `fh` вычисляются от размера текущего шрифта):
 
 ```kotlin
-docView.document[1]
-        .addWordSpan(10, CharacterStyle(
-                size = Size.em(1.4f),
-                leading = Size.ratio(1f)))
-docView.document[2]
-        .addSpan(Regex("""\d+"""), CharacterStyle(
-                verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
-                size = Size.em(0.58f),
-                leading = Size.ratio(1f)))
+paragraph(1) {
+    addWordSpan(10, CharacterStyle(
+            size = Size.em(1.4f),
+            leading = Size.ratio(1f)))
+}
+
+paragraph(2) {
+    addSpan(Regex("""\d+"""), CharacterStyle(
+            verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
+            size = Size.em(0.58f),
+            leading = Size.ratio(1f)))
+}
 ```
 
 Расстояние между строками получилось одинаковым. Если в нижнем индексе не будут использоваться символы, спускающиеся ниже базовой линии, то получим качественный результат. Зато увеличенный шрифт не пересёкся с соседними строками по чистой случайности. Но в этом случае остаётся только немного увеличить интерлиньяж во всём тексте, что, впрочем, всегда выглядит хорошо:
 
 ```kotlin
-docView.document.characterStyle.leading = Size.fh(1.15f)
+document {
+    characterStyle {
+        ...
+        leading = Size.fh(1.15f)
+    }
+    ...
+}
 ```
 
 ![screenshot_11_6.png](docs/screenshot_11_6.png)
 
 `fh` - это единицы измерения относительно высота шрифта (`ascent` + `descent`). При одинаковом кегле высота различных шрифтов различается. Использовать `em` в данном случае очень не удобно, так как кегль только условно связан с межстрочными интервалами, принятыми в текстовых редакторах.
 
+Обратите внимание! Интерлиньяж относится к стилю символов, не к стилю параграфа.
+
 ### Синхронизация текстов по базовой линии
 
 Обратите внимание! Интерлиньяж не влияет на первую строку в тексте, что вполне логично для строки, перед которой нет другой строки (между чем и чем будет тогда межстрочный интервал?). Высота первой строки всегда рассчитывается по размерам знаков, находящихся в ней. Это и выглядит достаточно хорошо, и удобно при использовании нескольких `DocumentView`, идущих друг за другом, например в `RecyclerView` (между элементами не будет дополнительного разрыва). Но это может испортить вид, если вы хотите поставить два текста параллельно, рассчитывая, что их базовые линии будут совпадать (например, для сравнения различных переводов одного и того же текста, особенно, когда языки используют совершенно несхожие друг с другом шрифты):
 
 ```kotlin
-docView.document[0]
-        .addSpan(0, 1, CharacterStyle(
-                size = Size.em(1.4f),
-                leading = Size.ratio(1f)))
+paragraph(0) {
+    addSpan(0, 1, CharacterStyle(
+            size = Size.em(1.4f),
+            leading = Size.ratio(1f)))
+}
 ```
 
 ![screenshot_11_7.png](docs/screenshot_11_7.png)
 
-Интерлиньяж `leading = Size.ratio(1f)` для первой строки не работает! Но есть решение и у этой проблемы. Можно принудительно установить первую базовую строку на самый верх секции (но после `margin`, `border` и `padding`). Тогда первая строка текста перестанет "считать" себя первой, а мы получим ожидаемую синхронизацию:
+Интерлиньяж `leading = Size.ratio(1f)` для первой строки не работает! Но есть решение и у этой проблемы. Можно принудительно установить первую базовую строку на самый верх документа (после `margin`, `border` и `padding`). Тогда первая строка текста перестанет "считать" себя первой, а мы получим ожидаемую синхронизацию:
 
 ```kotlin
-docView.document.setFirstBaselineToTop = true
+document {
+    setFirstBaselineToTop = true
+    ...
+}
 ```
 
 ![screenshot_11_8.png](docs/screenshot_11_8.png)
