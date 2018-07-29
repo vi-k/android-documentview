@@ -457,43 +457,53 @@ docView.baselineMode = DocumentView.Baseline.PARAGRAPH
 Базовые линии рассчитываются автоматически по максимальным размерам задействованных в строке символов с учётом их смещений относительно базовой линии (`baselineShift`), как это происходит с HTML:
 
 ```kotlin
-val string = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, " +
-        "sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.\n" +
-        "Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris " +
-        "ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.\n" +
-        "Duis1 aute2 iru~re3 do~lor4 in5 rep~re~hen~de~rit6 in7 vo~lup~ta~te8 " +
-        "ve~lit9 es~se10 cil~lum11 do~lo~re12 eu13 fu~gi~at14 nul~la15 " +
-        "pa~ria~tur16.\n" +
-        "Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent1, sunt in cul~pa* qui " +
-        "of~fi~cia de~se~runt mol~lit anim2 id est la~bo~rum."
+val string = """
+        |Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.
+        |Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.
+        |Duis1 aute2 iru~re3 do~lor4 in5 rep~re~hen~de~rit6 in7 vo~lup~ta~te8 ve~lit9 es~se10 cil~lum11 do~lo~re12 eu13 fu~gi~at14 nul~la15 pa~ria~tur16.
+        |Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent1, sunt in cul~pa* qui of~fi~cia de~se~runt mol~lit anim2 id est la~bo~rum.
+        """.trimMargin().replace('~', '\u00AD')
 
-docView.document.setText(string.replace('~', '\u00AD'))
+docView {
+    baselineMode = DocumentView.Baseline.VIEW
+    baselineColor = Color.rgb(0x4B77BE)
 
-docView.baselineMode = DocumentView.Baseline.VIEW
-docView.baselineColor = Color.rgb(0x4B77BE)
+    document {
+        setText(string)
 
-docView.document.borderStyle
-        .setPadding(Size.dp(0f), Size.dp(8f))
-        .setBorder(Border.px(1.0f, Color.BLACK))
-        .setMargin(Size.dp(4f))
+        borderStyle {
+            verticalPadding = Size.dp(0f)
+            horizontalPadding = Size.dp(8f)
+            border = Border.px(1.0f, Color.BLACK)
+            margin = Size.dp(4f)
+        }
 
-docView.document.characterStyle
-        .setSize(Size.sp(18f))
-docView.document.paragraphStyle
-        .setAlign(ParagraphStyle.Align.JUSTIFY)
-        .setFirstLeftIndent(Size.dp(24f))
+        characterStyle {
+            size = Size.sp(18f)
+        }
 
-docView.document[1]
-        .addWordSpan(10, CharacterStyle(
-                size = Size.em(1.4f)))
-docView.document[2]
-        .addSpan(Regex("""\d+"""), CharacterStyle(
-                baselineShift = Size.em(0.33f),
-                size = Size.em(0.58f)))
-docView.document[3]
-        .addSpan(Regex("""\*|\d"""), CharacterStyle(
-                baselineShift = Size.em(-0.5f),
-                size = Size.em(0.58f)))
+        paragraphStyle {
+            align = ParagraphStyle.Align.JUSTIFY
+            firstLeftIndent = Size.dp(24f)
+        }
+
+        // Пример 11.2
+        paragraph(1) {
+            addWordSpan(10, CharacterStyle(
+                    size = Size.em(1.4f)))
+        }
+
+        paragraph(2) {
+            addSpan(Regex("""\d+"""), CharacterStyle(
+                    baselineShift = Size.em(0.33f),
+                    size = Size.em(0.58f)))
+        }
+
+        paragraph(3) {
+            addSpan(Regex("""\*|\d"""), CharacterStyle(
+                    baselineShift = Size.em(-0.5f),
+                    size = Size.em(0.58f)))
+        }
 ```
 
 ![screenshot_11_2.png](docs/screenshot_11_2.png)
