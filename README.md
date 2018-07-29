@@ -44,20 +44,21 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
     val docView: DocumentView = findViewById(R.id.docView)
 
-    docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ...")
-    
-    docView.document
-            .addSpan(0, 5, CharacterStyle(color = Color.RED))
-            .addSpan(6, 11, CharacterStyle(bold = true))
-            .addSpan(12, 17, CharacterStyle(italic = true))
-            .addSpan(18, 21, CharacterStyle(bold = true, italic = true))
-            .addSpan(22, 26, CharacterStyle(underline = true))
-            .addSpan(28, 39, CharacterStyle(strike = true))
-            .addSpan(50, 55, CharacterStyle(baselineShift = Size.em(-0.4f),
-                    size = Size.em(0.85f)))
-            .addSpan(60, 63, CharacterStyle(baselineShift = Size.em(0.25f),
-                    size = Size.em(0.85f)))
-            .addSpan(64, 71, CharacterStyle(scaleX = 0.6f))
+    docView {
+        document {
+            setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ...")
+
+            addSpan(0, 5, CharacterStyle(color = Color.RED))
+            addSpan(6, 11, CharacterStyle(bold = true))
+            addSpan(12, 17, CharacterStyle(italic = true))
+            addSpan(18, 21, CharacterStyle(bold = true, italic = true))
+            addSpan(22, 26, CharacterStyle(underline = true))
+            addSpan(28, 39, CharacterStyle(strike = true))
+            addSpan(50, 55, CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f)))
+            addSpan(60, 63, CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f)))
+            addSpan(64, 71, CharacterStyle(scaleX = 0.6f))
+        }
+    }
 }
 ```
 
@@ -68,16 +69,15 @@ override fun onCreate(savedInstanceState: Bundle?) {
 Не всегда удобно отсчитывать количество символов для создания участков, для быстрого форматирования проще прибегнуть к нумерации слов. Функция `addWordSpan()` принимает на вход первым параметром номер слова (нумерация начинается с `1`). Вторым параметром можно указать количество слов, на которые надо распространить форматирование.
 
 ```kotlin
-docView.document
-        .addWordSpan(1, CharacterStyle(color = Color.RED))
-        .addWordSpan(2, CharacterStyle(bold = true))
-        .addWordSpan(3, CharacterStyle(italic = true))
-        .addWordSpan(4, CharacterStyle(bold = true, italic = true))
-        .addWordSpan(5, CharacterStyle(underline = true))
-        .addWordSpan(6, CharacterStyle(strike = true))
-        .addWordSpan(8, CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f)))
-        .addWordSpan(10, CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f)))
-        .addWordSpan(11, CharacterStyle(scaleX = 0.6f))
+addWordSpan(1, CharacterStyle(color = Color.RED))
+addWordSpan(2, CharacterStyle(bold = true))
+addWordSpan(3, CharacterStyle(italic = true))
+addWordSpan(4, CharacterStyle(bold = true, italic = true))
+addWordSpan(5, CharacterStyle(underline = true))
+addWordSpan(6, CharacterStyle(strike = true))
+addWordSpan(8, CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f)))
+addWordSpan(10, CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f)))
+addWordSpan(11, CharacterStyle(scaleX = 0.6f))
 ```
 
 В `addSpan()` можно использовать и регулярные выражения. Примеры будут ниже.
@@ -85,19 +85,21 @@ docView.document
 Участки могут пересекаться. В этом случае они либо дополняют друг друга, либо последний перекрывает первый:
 
 ```kotlin
-docView.document.setText("Lorem ipsum dolor sit amet ...")
+docView {
+    document {
+        setText("Lorem ipsum dolor sit amet ...")
 
-docView.document
-        .addWordSpan(1, 3, CharacterStyle(bold = true))
-        .addWordSpan(3, 3, CharacterStyle(italic = true))
+        addWordSpan(1, 3, CharacterStyle(bold = true))
+        addWordSpan(3, 3, CharacterStyle(italic = true))
+    }
+}
 ```
 
 ![screenshot_2.png](docs/screenshot_2.png)
 
 ```kotlin
-docView.document
-        .addWordSpan(1, 3, CharacterStyle(color = Color.RED))
-        .addWordSpan(3, -1, CharacterStyle(color = Color.GREEN)) // count = -1 - до конца абзаца
+addWordSpan(1, 3, CharacterStyle(color = Color.RED))
+addWordSpan(3, -1, CharacterStyle(color = Color.GREEN)) // count = -1 - до конца абзаца
 ```
 
 ![screenshot_2_2.png](docs/screenshot_2_2.png)
@@ -108,23 +110,36 @@ docView.document
 
 ## Абзацы
 
-В предыдущих примерах был только один абзац. Если же абзацев несколько, то доступ к каждому осуществляется по индексу:
+В предыдущих примерах был только один абзац. Если же абзацев несколько, то доступ к каждому осуществляется с помощью функции `paragraph()`:
 
 ```kotlin
-docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " +
-        "do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
-        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut " +
-        "aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit " +
-        "in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n" +
-        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia " +
-        "deserunt mollit anim id est laborum.")
+docView {
+    document {
+        setText("""
+            |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            |Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            """.trimMargin())
 
-docView.document[0]
-        .addSpan(0, 1, CharacterStyle(color = Color.RED))
-docView.document[1]
-        .addSpan(0, 1, CharacterStyle(color = Color.RED))
-docView.document[2]
-        .addSpan(0, 1, CharacterStyle(color = Color.RED))
+        borderStyle {
+            padding = Size.dp(8f)
+            border = Border.px(1.0f, Color.BLACK)
+            margin = Size.dp(4f)
+        }
+
+        paragraph(0) {
+            addSpan(0, 1, CharacterStyle(color = Color.RED))
+        }
+
+        paragraph(1) {
+            addSpan(0, 1, CharacterStyle(color = Color.RED))
+        }
+
+        paragraph(2) {
+            addSpan(0, 1, CharacterStyle(color = Color.RED))
+        }
+    }
+}
 ```
 
 ![screenshot_3.png](docs/screenshot_3.png)
@@ -132,9 +147,26 @@ docView.document[2]
 У абзаца есть собственные настройки стиля знаков, изменение которого оказывает воздействие на весь абзац:
 
 ```kotlin
-docView.document[0].characterStyle.italic = true
-docView.document[1].characterStyle.size = Size.em(0.8f)
-docView.document[2].characterStyle.color = Color.GRAY
+paragraph(0) {
+    characterStyle {
+        italic = true
+    }
+    ...
+}
+
+paragraph(1) {
+    characterStyle {
+        size = Size.em(0.8f)
+    }
+    ...
+}
+
+paragraph(2) {
+    characterStyle {
+        color = Color.GRAY
+    }
+    ...
+}
 ```
 
 ![screenshot_3_2.png](docs/screenshot_3_2.png)
@@ -146,45 +178,79 @@ docView.document[2].characterStyle.color = Color.GRAY
 Чтобы использовать другие шрифты, кроме стандартного, их надо создать и добавить в список `fontList`:
 
 ```kotlin
-docView.fontList.createFamily("sans_serif", Font(Typeface.SANS_SERIF))
-docView.fontList.createFamily("serif", Font(Typeface.SERIF))
-docView.fontList.createFamily("mono", Font(Typeface.MONOSPACE))
+fontList {
+    "sans_serif" family Font(Typeface.SANS_SERIF)
+    "serif" family Font(Typeface.SERIF)
+    "mono" family Font(Typeface.MONOSPACE)
+}
 
-docView.document[0].characterStyle.font = "sans_serif"
-docView.document[1].characterStyle.font = "serif"
-docView.document[2].characterStyle.font = "mono"
+paragraph(0) {
+    characterStyle {
+        font = "sans_serif"
+    }
+    ...
+}
+
+paragraph(1) {
+    characterStyle {
+        font = "serif"
+    }
+    ...
+}
+
+paragraph(2) {
+    characterStyle {
+        font = "mono"
+    }
+    ...
+}
 ```
 
 ![screenshot_4.png](docs/screenshot_4.png)
 
-Функция `createFamily()` создаёт сразу 4 шрифта для разных начертаний: нормального, **полужирного**, *курсива* и ***полужирного вместе с курсивом***. Это возможно только для встроенных шрифтов. Для пользовательских шрифтов все файлы с начертаниями необходимо загрузить отдельно. Если этого не сделать, соответствующий шрифт будет при необходимости генерироваться автоматически. Но специально приготовленные шрифты могут существенно отличаться от генерируемых:
+С помощью DSL-конструкции `"name" family Font(...)` (или функции `createFamily()`) создаётся сразу 4 шрифта для разных начертаний: нормального, **полужирного**, *курсива* и ***полужирного вместе с курсивом***. Но это возможно только для встроенных шрифтов. Для пользовательских шрифтов все файлы с начертаниями необходимо загрузить отдельно. Если этого не сделать, соответствующий шрифт будет при необходимости генерироваться автоматически. Но специально приготовленные шрифты могут существенно отличаться от генерируемых:
 
 ```kotlin
-docView.document.setText("Lorem ipsum dolor sit amet ...\n" +
-        "Lorem ipsum dolor sit amet ...")
+docView {
+    fontList {
+        "serif1" family Font(Typeface.SERIF)
+        "serif2" to Font(Typeface.SERIF)
+    }
 
-docView.document[0]
-        .addWordSpan(1, 3, CharacterStyle(bold = true))
-        .addWordSpan(3, 3, CharacterStyle(italic = true))
-docView.document[1]
-        .addWordSpan(1, 3, CharacterStyle(bold = true))
-        .addWordSpan(3, 3, CharacterStyle(italic = true))
+    document {
+        setText("Lorem ipsum dolor sit amet ...\nLorem ipsum dolor sit amet ...")
 
-docView.fontList.createFamily("serif1", Font(Typeface.SERIF))
-docView.fontList["serif2"] = Font(Typeface.SERIF)
+        paragraph(0) {
+            characterStyle {
+                font = "serif1"
+            }
 
-docView.document[0].characterStyle.font = "serif1"
-docView.document[1].characterStyle.font = "serif2"
+            addWordSpan(1, 3, CharacterStyle(bold = true))
+            addWordSpan(3, 3, CharacterStyle(italic = true))
+        }
+
+        paragraph(1) {
+            characterStyle {
+                font = "serif2"
+            }
+
+            addWordSpan(1, 3, CharacterStyle(bold = true))
+            addWordSpan(3, 3, CharacterStyle(italic = true))
+        }
+    }
+}
 ```
 
 ![screenshot_5.png](docs/screenshot_5.png)
 
+DSL-конструкция `"name" to Font(...)` (или обращение к списку по индексу: `fontList["name"]`) добавляет только один, указанный шрифт.
+
 Чтобы `DocumentView` в нужные моменты мог задействовать нужные шрифты, при создании шрифта к основному названию надо добавить соответствующий постфикс: `:bold`, `:italic`, `:bold_italic`
 
 ```kotlin
-docView.fontList["serif2:bold"] = Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
-docView.fontList["serif2:italic"] = Font(Typeface.create(Typeface.SERIF, Typeface.ITALIC))
-docView.fontList["serif2:bold_italic"] = Font(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC))
+"serif2:bold" to Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
+"serif2:italic" to Font(Typeface.create(Typeface.SERIF, Typeface.ITALIC))
+"serif2:bold_italic" to Font(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC))
 ```
 
 ![screenshot_5_2.png](docs/screenshot_5_2.png)
@@ -192,21 +258,26 @@ docView.fontList["serif2:bold_italic"] = Font(Typeface.create(Typeface.SERIF, Ty
 Если проект использует несколько `DocumentView`, то удобнее создать один список шрифтов и использовать его для всех создаваемых виджетов:
 
 ```kotlin
-val fontList = FontList()
-fontList["georgia"] = Font(Typeface.createFromAsset(this.assets, "fonts/georgia.ttf")!!)
-fontList["georgia:bold"] = Font(Typeface.createFromAsset(this.assets, "fonts/georgiab.ttf")!!)
-fontList["georgia:italic"] = Font(Typeface.createFromAsset(this.assets, "fonts/georgiai.ttf")!!)
-fontList["georgia:bold_italic"] = Font(Typeface.createFromAsset(this.assets, "fonts/georgiaz.ttf")!!)
+val commonFontList = FontList {
+    "georgia" to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
+    "georgia:bold" to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
+    "georgia:italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiai.ttf")!!)
+    "georgia:bold_italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
+}
 
-docView.fontList = fontList
-docView.document.characterStyle.font = "georgia"
+docView {
+    fontList = commonFontList
+    document {
+        setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")
 
-docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " +
-        "do eiusmod tempor incididunt ut labore et dolore magna aliqua.")
+        characterStyle {
+            font = "georgia"
+        }
 
-docView.document
-        .addWordSpan(6, 8, CharacterStyle(bold = true))
-        .addWordSpan(9, -1, CharacterStyle(italic = true))
+        addWordSpan(6, 8, CharacterStyle(bold = true))
+        addWordSpan(9, -1, CharacterStyle(italic = true))
+    }
+}
 ```
 
 ![screenshot_6.png](docs/screenshot_6.png)
@@ -216,28 +287,36 @@ docView.document
 Абзац можно оформить рамкой:
 
 ```kotlin
-docView.document.setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed " +
-        "do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
-        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut " +
-        "aliquip ex ea commodo consequat.\n" +
-        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore " +
-        "eu fugiat nulla pariatur.")
+docView {
+    document {
+        setText("""
+            |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            |Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            """.trimMargin())
 
-docView.document[0].borderStyle
-        .setPadding(Size.dp(8f))
-        .setBorder(Border.dp(1f, Color.rgb(0xDC3023)))
-        .setMargin(Size.dp(8f))
-        .setBackgroundColor(Color.argb(0.1f, 0xDC3023))
-docView.document[1].borderStyle
-        .setPadding(Size.dp(8f))
-        .setBorder(Border.dp(1f, Color.rgb(0x22A7F0)))
-        .setMargin(Size.dp(8f))
-        .setBackgroundColor(Color.argb(0.1f, 0x22A7F0))
-docView.document[2].borderStyle
-        .setPadding(Size.dp(8f))
-        .setBorder(Border.dp(1f, Color.rgb(0x26C281)))
-        .setMargin(Size.dp(8f))
-        .setBackgroundColor(Color.argb(0.1f, 0x26C281))
+        paragraph(0).borderStyle {
+            padding = Size.dp(8f)
+            border = Border.dp(1f, Color.rgb(0xDC3023))
+            margin = Size.dp(8f)
+            backgroundColor = Color.argb(0.1f, 0xDC3023)
+        }
+
+        paragraph(1).borderStyle {
+            padding = Size.dp(8f)
+            border = Border.dp(1f, Color.rgb(0x22A7F0))
+            margin = Size.dp(8f)
+            backgroundColor = Color.argb(0.1f, 0x22A7F0)
+        }
+
+        paragraph(2).borderStyle {
+            padding = Size.dp(8f)
+            border = Border.dp(1f, Color.rgb(0x26C281))
+            margin = Size.dp(8f)
+            backgroundColor = Color.argb(0.1f, 0x26C281)
+        }
+    }
+}
 ```
 
 ![screenshot_7.png](docs/screenshot_7.png)
@@ -247,32 +326,30 @@ docView.document[2].borderStyle
 Рамки могут быть разными. Сам документ также может иметь отдельную рамку:
 
 ```kotlin
-docView.document.borderStyle
-        .setPadding(Size.dp(4f))
-        .setBorder(Border.dp(4.0f, Color.rgb(0xF9690E)))
-        .setMargin(Size.dp(4f))
-        .setBackgroundColor(Color.argb(0.1f, 0xF9690E))
+paragraph(0).borderStyle {
+    padding = Size.dp(8f)
+    borderTop = Border.dp(8f, Color.rgb(0xDC3023))
+    borderRight = Border.dp(8f, Color.rgb(0x22A7F0))
+    borderBottom = Border.dp(8f, Color.rgb(0x26C281))
+    borderLeft = Border.dp(8f, Color.rgb(0x9B59B6))
+    margin = Size.dp(4f)
+    backgroundColor = Color.argb(0.2f, 0xDC3023)
+}
 
-docView.document[0].borderStyle
-        .setPadding(Size.dp(8f))
-        .setBorderTop(Border.dp(8f, Color.rgb(0xDC3023)))
-        .setBorderRight(Border.dp(8f, Color.rgb(0x22A7F0)))
-        .setBorderBottom(Border.dp(8f, Color.rgb(0x26C281)))
-        .setBorderLeft(Border.dp(8f, Color.rgb(0x9B59B6)))
-        .setMargin(Size.dp(4f))
-        .setBackgroundColor(Color.argb(0.2f, 0xDC3023))
-docView.document[1].borderStyle
-        .setPadding(Size.dp(8f))
-        .setBorderLeft(Border.dp(8f, Color.rgb(0x22A7F0)))
-        .setMargin(Size.dp(4f))
-        .setBackgroundColor(Color.argb(0.2f, 0x22A7F0))
-docView.document[2].borderStyle
-        .setPadding(Size.dp(8f))
-        .setBorder(
-                Border.dp(8f, Color.TRANSPARENT),
-                Border.dp(8f, Color.rgb(0x26C281)))
-        .setMargin(Size.dp(4f))
-        .setBackgroundColor(Color.argb(0.2f, 0x26C281))
+paragraph(1).borderStyle {
+    padding = Size.dp(8f)
+    borderLeft = Border.dp(8f, Color.rgb(0x22A7F0))
+    margin = Size.dp(4f)
+    backgroundColor = Color.argb(0.2f, 0x22A7F0)
+}
+
+paragraph(2).borderStyle {
+    padding = Size.dp(8f)
+    verticalBorder = Border.dp(8f, Color.TRANSPARENT)
+    horizontalBorder = Border.dp(8f, Color.rgb(0x26C281))
+    margin = Size.dp(4f)
+    backgroundColor = Color.argb(0.2f, 0x26C281)
+}
 ```
 
 ![screenshot_7_2.png](docs/screenshot_7_2.png)
@@ -284,44 +361,59 @@ docView.document[2].borderStyle
 Для оформления абзацев в наличии имеются отступы сверху и снизу (`spaceBefore`, `spaceAfter`), выравнивание (`align`) по левому краю, по правому, по ширине и относительно центра, отступы слева и справа (`leftIndent`, `rightIndent`), отдельное выравнивание и отступы для первой строки (`firstAlign`, `firstLeftIndent`, `firstRightIndent`), отдельное выравнивание для последней строки (`lastAlign`).
 
 ```kotlin
-docView.document.setText("Lorem ipsum\n" +
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod " +
-        "tempor incididunt ut labore et dolore magna aliqua.\n" +
-        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi " +
-        "ut aliquip ex ea commodo consequat.\n" +
-        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore " +
-        "eu fugiat nulla pariatur.\n" +
-        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia " +
-        "deserunt mollit anim id est laborum.")
+docView {
+    document {
+        setText("""
+            |Lorem ipsum
+            |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            |Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            |Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+        """.trimMargin())
 
-docView.document.characterStyle
-        .setSize(Size.em(1.2f)) // Наверху обязательно должен быть указан абсолютный,
-                                // а не относительный размер шрифта. Но в данном случае
-                                // под капотом, чтобы избежать лишних вопросов
-                                // "где мой текст?", сам DocumentView устанавливает
-                                // все дефолтные значения. Например, размер шрифта
-                                // равен 16sp.
-docView.document.paragraphStyle
-        .setSpaceBefore(Size.dp(8f)) // Отступ сверху, общий для всех абзацев
+        characterStyle {
+            size = Size.em(1.2f)
+        }
 
-docView.document[0].characterStyle
-        .setSize(Size.em(2f))
-docView.document[0].paragraphStyle
-        .setAlign(ParagraphStyle.Align.CENTER)
-        .setSpaceBefore(Size.dp(0f))
-docView.document[0].borderStyle
-        .setBorderBottom(Border.dp(1f, Color.LTGRAY))
-        .setMarginBottom(Size.dp(4f))
-docView.document[1].paragraphStyle
-        .setAlign(ParagraphStyle.Align.LEFT)
-        .setFirstLeftIndent(Size.em(2f))
-docView.document[2].paragraphStyle
-        .setAlign(ParagraphStyle.Align.RIGHT)
-docView.document[3].paragraphStyle
-        .setAlign(ParagraphStyle.Align.JUSTIFY)
-docView.document[4].paragraphStyle
-        .setAlign(ParagraphStyle.Align.JUSTIFY)
-        .setLastAlign(ParagraphStyle.Align.CENTER)
+        paragraphStyle {
+            spaceBefore = Size.dp(8f) // Отступ сверху, общий для всех абзацев
+        }
+
+        paragraph(0) {
+            characterStyle {
+                size = Size.em(2f)
+            }
+
+            paragraphStyle {
+                align = ParagraphStyle.Align.CENTER
+                spaceBefore = Size.dp(0f)
+            }
+
+            borderStyle {
+                borderBottom = Border.dp(1f, Color.LTGRAY)
+                marginBottom = Size.dp(4f)
+            }
+        }
+
+        paragraph(1).paragraphStyle {
+            align = ParagraphStyle.Align.LEFT
+            firstLeftIndent = Size.em(2f)
+        }
+
+        paragraph(2).paragraphStyle {
+            align = ParagraphStyle.Align.RIGHT
+        }
+
+        paragraph(3).paragraphStyle {
+            align = ParagraphStyle.Align.JUSTIFY
+        }
+
+        paragraph(4).paragraphStyle {
+            align = ParagraphStyle.Align.JUSTIFY
+            lastAlign = ParagraphStyle.Align.CENTER
+        }
+    }
+}
 ```
 
 ![screenshot_8.png](docs/screenshot_8.png)
@@ -329,20 +421,33 @@ docView.document[4].paragraphStyle
 Пример оформления стихотворения:
 
 ```kotlin
-docView.document.setText("Куда ещё тянется провод\u2028из гроба того?\n" +
-        "Нет, Сталин не умер. Считает он смерть поправимостью.\n" +
-        "Мы вынесли из мавзолея его.\n" +
-        "Но как из наследников Сталина Сталина вынести?")
+docView {
+    fontList {
+        "georgia" to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
+        "georgia:bold" to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
+        "georgia:italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiai.ttf")!!)
+        "georgia:bold_italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
+    }
 
-docView.document.characterStyle
-        .setFont("georgia")
-        .setItalic(true)
+    document {
+        setText("Куда ещё тянется провод\u2028из гроба того?\n" +
+                "Нет, Сталин не умер. Считает он смерть поправимостью.\n" +
+                "Мы вынесли из мавзолея его.\n" +
+                "Но как из наследников Сталина Сталина вынести?")
 
-docView.document.paragraphStyle
-        .setLeftIndent(Size.em(2f))
-        .setFirstLeftIndent(Size.em(-2f))
-        .setFirstAlign(ParagraphStyle.Align.LEFT)
-        .setAlign(ParagraphStyle.Align.RIGHT)
+        characterStyle {
+            font = "georgia"
+            italic = true
+        }
+
+        paragraphStyle {
+            leftIndent = Size.em(2f)
+            firstLeftIndent = Size.em(-2f)
+            firstAlign = ParagraphStyle.Align.LEFT
+            align = ParagraphStyle.Align.RIGHT
+        }
+    }
+}
 ```
 
 ![screenshot_8_2.png](docs/screenshot_8_2.png)
@@ -354,14 +459,19 @@ docView.document.paragraphStyle
 При совместном использовании нескольких шрифтов может возникнуть проблема соотношения реальных размеров знаков для одного и того же кегля:
 
 ```kotlin
-docView.fontList.createFamily("serif", Font(Typeface.SERIF))
-docView.fontList["ponomar"] = Font(
-        typeface = Typeface.createFromAsset(this.assets, "fonts/PonomarUnicode.ttf")!!)
+docView {
+    fontList {
+        "serif" family Font(Typeface.SERIF)
+        "ponomar" to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!)
+    }
 
-docView.document.setText("В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ")
+    document {
+        setText("В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ")
 
-docView.document.addWordSpan(1, 4, CharacterStyle(font = "serif"))
-docView.document.addWordSpan(5, -1, CharacterStyle(font = "ponomar"))
+        addWordSpan(1, 4, CharacterStyle(font = "serif"))
+        addWordSpan(5, -1, CharacterStyle(font = "ponomar"))
+    }
+}
 ```
 
 ![screenshot_9.png](docs/screenshot_9.png)
@@ -369,8 +479,7 @@ docView.document.addWordSpan(5, -1, CharacterStyle(font = "ponomar"))
 Можно, конечно, в каждом случае вручную приводить нужный текст к требуемому размеру, а можно скорректировать весь шрифт ещё на этапе его загрузки, задав ему масштаб:
 
 ```kotlin
-docView.fontList["ponomar"] = Font(
-        typeface = Typeface.createFromAsset(this.assets, "fonts/PonomarUnicode.ttf")!!,
+"ponomar" to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
         scale = 1.2f)
 ```
 
@@ -379,11 +488,8 @@ docView.fontList["ponomar"] = Font(
 Следующей проблемой может оказаться, как в данном случае, слишком большое или слишком маленькое расстояние между строками *(старославянский шрифт требует больше места из-за обилия в языке диакритических знаков)*. Это тоже можно исправить, указав нужные коэффициенты для коррекции верхнего (`ascent`) и нижнего (`descent`) отступов шрифта:
 
 ```kotlin
-docView.fontList["ponomar"] = Font(
-        typeface = Typeface.createFromAsset(this.assets, "fonts/PonomarUnicode.ttf")!!,
-        ascentRatio = 0.8f,
-        descentRatio = 0.8f,
-        scale = 1.2f)
+"ponomar" to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+        scale = 1.2f, ascentRatio = 0.8f, descentRatio = 0.8f)
 ```
 
 ![screenshot_9_3.png](docs/screenshot_9_3.png)
@@ -415,21 +521,17 @@ val string = "Прї~и~ди́~те ко мнѣ̀ всѝ трꙋж~да́ю~
         .replace('~', '\u00AD')
 
 docView {
-    fontList["ponomar"] = Font(
-            typeface = Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
-            hyphen = '_', // Символ переноса для старославянского языка
-            ascentRatio = 0.9f,
-            descentRatio = 0.9f,
-            scale = 1.2f)
+    fontList {
+        "ponomar" to Font(
+                typeface = Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+                hyphen = '_', // Символ переноса для старославянского языка
+                ascentRatio = 0.9f,
+                descentRatio = 0.9f,
+                scale = 1.2f)
+    }
 
     document {
         setText(string)
-
-        borderStyle {
-            padding = Size.dp(8f)
-            border = Border.px(1.0f, Color.BLACK)
-            margin = Size.dp(4f)
-        }
 
         characterStyle {
             font = "ponomar"
@@ -458,12 +560,6 @@ val string = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, s
 docView {
     baselineMode = DocumentView.Baseline.PARAGRAPH
     document.setText(string)
-
-    borderStyle {
-        padding = Size.dp(8f)
-        border = Border.px(1.0f, Color.BLACK)
-        margin = Size.dp(4f)
-    }
 }
 ```
 
