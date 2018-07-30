@@ -80,7 +80,7 @@ span on word(10) style CharacterStyle(baselineShift = Size.em(0.25f), size = Siz
 span on word(11) style CharacterStyle(scaleX = 0.6f)
 ```
 
-Следующие конструкции равнозначны:
+Следующие конструкции равнозначны (выделение одного слова):
 
 ```kotlin
 span on word(n) style CharacterStyle(color = Color.RED)
@@ -88,7 +88,15 @@ span from word(n) to word(n) style CharacterStyle(color = Color.RED)
 span from word(n) count word(1) style CharacterStyle(color = Color.RED)
 ```
 
-Можно использовать и регулярные выражения. Примеры будут ниже.
+И эти тоже (выделение одного символа):
+
+```kotlin
+span on n style CharacterStyle(color = Color.RED)
+span from n to n + 1 style CharacterStyle(color = Color.RED)
+span from n count 1 style CharacterStyle(color = Color.RED)
+```
+
+Можно использовать также строки и регулярные выражения. Примеры будут ниже.
 
 Участки могут пересекаться. В этом случае они либо дополняют друг друга, либо последний перекрывает первый:
 
@@ -229,8 +237,8 @@ docView {
                 font = "serif1"
             }
 
-            span to word(3) style CharacterStyle(bold = true)
-            span from word(3) style CharacterStyle(italic = true)
+            span to "dolor" style CharacterStyle(bold = true)
+            span from "dolor" style CharacterStyle(italic = true)
         }
 
         paragraph(1) {
@@ -238,8 +246,8 @@ docView {
                 font = "serif2"
             }
 
-            span to word(3) style CharacterStyle(bold = true)
-            span from word(3) style CharacterStyle(italic = true)
+            span to "dolor" style CharacterStyle(bold = true)
+            span from "dolor" style CharacterStyle(italic = true)
         }
     }
 }
@@ -279,8 +287,8 @@ docView {
             font = "georgia"
         }
 
-        span from word(6) to word(13) style CharacterStyle(bold = true)
-        span from word(9) style CharacterStyle(italic = true)
+        span from "consectetur" to "incididunt" style CharacterStyle(bold = true)
+        span from "sed" style CharacterStyle(italic = true)
     }
 }
 ```
