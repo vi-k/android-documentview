@@ -46,17 +46,17 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
     docView {
         document {
-            setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ...")
+            text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ..."
 
-            addSpan(0, 5, CharacterStyle(color = Color.RED))
-            addSpan(6, 11, CharacterStyle(bold = true))
-            addSpan(12, 17, CharacterStyle(italic = true))
-            addSpan(18, 21, CharacterStyle(bold = true, italic = true))
-            addSpan(22, 26, CharacterStyle(underline = true))
-            addSpan(28, 39, CharacterStyle(strike = true))
-            addSpan(50, 55, CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f)))
-            addSpan(60, 63, CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f)))
-            addSpan(64, 71, CharacterStyle(scaleX = 0.6f))
+            span from 0 to 5 style CharacterStyle(color = Color.RED)
+            span from 6 to 11 style CharacterStyle(bold = true)
+            span from 12 to 17 style CharacterStyle(italic = true)
+            span from 18 to 21 style CharacterStyle(bold = true, italic = true)
+            span from 22 to 26 style CharacterStyle(underline = true)
+            span from 28 to 39 style CharacterStyle(strike = true)
+            span from 50 to 55 style CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f))
+            span from 60 to 63 style CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f))
+            span from 64 to 71 style CharacterStyle(scaleX = 0.6f)
         }
     }
 }
@@ -64,33 +64,41 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 ![screenshot_1.png](docs/screenshot_1.png)
 
-Виджет содержит внутри себя объект платформонезависимого класса `Document` ([wiki][document]), который хранит в себе форматируемый документ. С ним мы и работаем, добавляя участки форматирования. Класс `Span` хранит в себе стиль знаков, начало и конец форматирования.
+Виджет содержит внутри себя объект платформонезависимого класса `Document` ([wiki][document]), который хранит в себе форматируемый документ. С ним мы и работаем, добавляя участки форматирования с помощью DSL-конструкции `span from ... to/count ... style ...`.
 
-Не всегда удобно отсчитывать количество символов для создания участков, для быстрого форматирования проще прибегнуть к нумерации слов. Функция `addWordSpan()` принимает на вход первым параметром номер слова (нумерация начинается с `1`). Вторым параметром можно указать количество слов, на которые надо распространить форматирование.
+Не всегда удобно отсчитывать количество символов для создания участков, иногда для быстрого форматирования проще прибегнуть к нумерации слов. Для этого в конструкции `span ...` можно использовать функцию `word()`, которая позволяет считать слова (нумерация слов начинается с `1`)
 
 ```kotlin
-addWordSpan(1, CharacterStyle(color = Color.RED))
-addWordSpan(2, CharacterStyle(bold = true))
-addWordSpan(3, CharacterStyle(italic = true))
-addWordSpan(4, CharacterStyle(bold = true, italic = true))
-addWordSpan(5, CharacterStyle(underline = true))
-addWordSpan(6, CharacterStyle(strike = true))
-addWordSpan(8, CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f)))
-addWordSpan(10, CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f)))
-addWordSpan(11, CharacterStyle(scaleX = 0.6f))
+span on word(1) style CharacterStyle(color = Color.RED)
+span on word(2) style CharacterStyle(bold = true)
+span on word(3) style CharacterStyle(italic = true)
+span on word(4) style CharacterStyle(bold = true, italic = true)
+span on word(5) style CharacterStyle(underline = true)
+span on word(6) style CharacterStyle(strike = true)
+span on word(8) style CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f))
+span on word(10) style CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f))
+span on word(11) style CharacterStyle(scaleX = 0.6f)
 ```
 
-В `addSpan()` можно использовать и регулярные выражения. Примеры будут ниже.
+Следующие конструкции равнозначны:
+
+```kotlin
+span on word(n) style CharacterStyle(color = Color.RED)
+span from word(n) to word(n) style CharacterStyle(color = Color.RED)
+span from word(n) count word(1) style CharacterStyle(color = Color.RED)
+```
+
+Можно использовать и регулярные выражения. Примеры будут ниже.
 
 Участки могут пересекаться. В этом случае они либо дополняют друг друга, либо последний перекрывает первый:
 
 ```kotlin
 docView {
     document {
-        setText("Lorem ipsum dolor sit amet ...")
+        text = "Lorem ipsum dolor sit amet ..."
 
-        addWordSpan(1, 3, CharacterStyle(bold = true))
-        addWordSpan(3, 3, CharacterStyle(italic = true))
+        span from word(1) to word(3) style CharacterStyle(bold = true)
+        span from word(3) to word(5) style CharacterStyle(italic = true)
     }
 }
 ```
@@ -98,13 +106,13 @@ docView {
 ![screenshot_2.png](docs/screenshot_2.png)
 
 ```kotlin
-addWordSpan(1, 3, CharacterStyle(color = Color.RED))
-addWordSpan(3, -1, CharacterStyle(color = Color.GREEN)) // count = -1 - до конца абзаца
+span to word(3) style CharacterStyle(color = Color.RED)
+span from word(3) style CharacterStyle(color = Color.GREEN)
 ```
 
 ![screenshot_2_2.png](docs/screenshot_2_2.png)
 
-Если в `addWordSpan()` вместо количества слов указано отрицательное значение, то правой границей участка станет конец абзаца.
+Если ключевое слово `from` опущено, то левой границей участка будет начало абзаца. Если опущено ключевое слово `to`, то правой границей участка станет конец абзаца.
 
 Класс `Document` является основой для создания классов-наследников, которые будут конвертировать исходный текст в каком-либо формате (HTML, Markdown и т.п.) во внутреннюю структуру `Document`. Для конвертации HTML смотрите модуль `htmldocument` ([wiki][htmldocument]).
 
@@ -115,22 +123,24 @@ addWordSpan(3, -1, CharacterStyle(color = Color.GREEN)) // count = -1 - до к�
 ```kotlin
 docView {
     document {
-        setText("""
+        text = """
             |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
             |Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
             |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-            """.trimMargin())
+            """.trimMargin()
 
+        val red = CharacterStyle(color = Color.RED)
+        
         paragraph(0) {
-            addSpan(0, 1, CharacterStyle(color = Color.RED))
+            span on 0 style red
         }
 
         paragraph(1) {
-            addSpan(0, 1, CharacterStyle(color = Color.RED))
+            span on 0 style red
         }
 
         paragraph(2) {
-            addSpan(0, 1, CharacterStyle(color = Color.RED))
+            span on 0 style red
         }
     }
 }
@@ -212,15 +222,15 @@ docView {
     }
 
     document {
-        setText("Lorem ipsum dolor sit amet ...\nLorem ipsum dolor sit amet ...")
+        text = "Lorem ipsum dolor sit amet ...\nLorem ipsum dolor sit amet ..."
 
         paragraph(0) {
             characterStyle {
                 font = "serif1"
             }
 
-            addWordSpan(1, 3, CharacterStyle(bold = true))
-            addWordSpan(3, 3, CharacterStyle(italic = true))
+            span to word(3) style CharacterStyle(bold = true)
+            span from word(3) style CharacterStyle(italic = true)
         }
 
         paragraph(1) {
@@ -228,8 +238,8 @@ docView {
                 font = "serif2"
             }
 
-            addWordSpan(1, 3, CharacterStyle(bold = true))
-            addWordSpan(3, 3, CharacterStyle(italic = true))
+            span to word(3) style CharacterStyle(bold = true)
+            span from word(3) style CharacterStyle(italic = true)
         }
     }
 }
@@ -261,15 +271,16 @@ val commonFontList = FontList {
 
 docView {
     fontList = commonFontList
+    
     document {
-        setText("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")
+        text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
 
         characterStyle {
             font = "georgia"
         }
 
-        addWordSpan(6, 8, CharacterStyle(bold = true))
-        addWordSpan(9, -1, CharacterStyle(italic = true))
+        span from word(6) to word(13) style CharacterStyle(bold = true)
+        span from word(9) style CharacterStyle(italic = true)
     }
 }
 ```
@@ -283,31 +294,37 @@ docView {
 ```kotlin
 docView {
     document {
-        setText("""
+        text = """
             |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
             |Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
             |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-            """.trimMargin())
+            """.trimMargin()
 
-        paragraph(0).borderStyle {
-            padding = Size.dp(8f)
-            border = Border.dp(1f, Color.rgb(0xDC3023))
-            margin = Size.dp(8f)
-            backgroundColor = Color.argb(0.1f, 0xDC3023)
+        paragraph(0) {
+            borderStyle {
+                padding = Size.dp(8f)
+                border = Border.dp(1f, Color.rgb(0xDC3023))
+                margin = Size.dp(8f)
+                backgroundColor = Color.argb(0.1f, 0xDC3023)
+            }
         }
 
-        paragraph(1).borderStyle {
-            padding = Size.dp(8f)
-            border = Border.dp(1f, Color.rgb(0x22A7F0))
-            margin = Size.dp(8f)
-            backgroundColor = Color.argb(0.1f, 0x22A7F0)
+        paragraph(1) {
+            borderStyle {
+                padding = Size.dp(8f)
+                border = Border.dp(1f, Color.rgb(0x22A7F0))
+                margin = Size.dp(8f)
+                backgroundColor = Color.argb(0.1f, 0x22A7F0)
+            }
         }
 
-        paragraph(2).borderStyle {
-            padding = Size.dp(8f)
-            border = Border.dp(1f, Color.rgb(0x26C281))
-            margin = Size.dp(8f)
-            backgroundColor = Color.argb(0.1f, 0x26C281)
+        paragraph(2) {
+            borderStyle {
+                padding = Size.dp(8f)
+                border = Border.dp(1f, Color.rgb(0x26C281))
+                margin = Size.dp(8f)
+                backgroundColor = Color.argb(0.1f, 0x26C281)
+            }
         }
     }
 }
@@ -320,29 +337,35 @@ docView {
 Рамки могут быть разными. Сам документ также может иметь отдельную рамку:
 
 ```kotlin
-paragraph(0).borderStyle {
-    padding = Size.dp(8f)
-    borderTop = Border.dp(8f, Color.rgb(0xDC3023))
-    borderRight = Border.dp(8f, Color.rgb(0x22A7F0))
-    borderBottom = Border.dp(8f, Color.rgb(0x26C281))
-    borderLeft = Border.dp(8f, Color.rgb(0x9B59B6))
-    margin = Size.dp(4f)
-    backgroundColor = Color.argb(0.2f, 0xDC3023)
+paragraph(0) {
+    borderStyle {
+        padding = Size.dp(8f)
+        borderTop = Border.dp(8f, Color.rgb(0xDC3023))
+        borderRight = Border.dp(8f, Color.rgb(0x22A7F0))
+        borderBottom = Border.dp(8f, Color.rgb(0x26C281))
+        borderLeft = Border.dp(8f, Color.rgb(0x9B59B6))
+        margin = Size.dp(4f)
+        backgroundColor = Color.argb(0.2f, 0xDC3023)
+    }
 }
 
-paragraph(1).borderStyle {
-    padding = Size.dp(8f)
-    borderLeft = Border.dp(8f, Color.rgb(0x22A7F0))
-    margin = Size.dp(4f)
-    backgroundColor = Color.argb(0.2f, 0x22A7F0)
+paragraph(1) {
+    borderStyle {
+        padding = Size.dp(8f)
+        borderLeft = Border.dp(8f, Color.rgb(0x22A7F0))
+        margin = Size.dp(4f)
+        backgroundColor = Color.argb(0.2f, 0x22A7F0)
+    }
 }
 
-paragraph(2).borderStyle {
-    padding = Size.dp(8f)
-    verticalBorder = Border.dp(8f, Color.TRANSPARENT)
-    horizontalBorder = Border.dp(8f, Color.rgb(0x26C281))
-    margin = Size.dp(4f)
-    backgroundColor = Color.argb(0.2f, 0x26C281)
+paragraph(2) {
+    borderStyle {
+        padding = Size.dp(8f)
+        verticalBorder = Border.dp(8f, Color.TRANSPARENT)
+        horizontalBorder = Border.dp(8f, Color.rgb(0x26C281))
+        margin = Size.dp(4f)
+        backgroundColor = Color.argb(0.2f, 0x26C281)
+    }
 }
 ```
 
@@ -357,13 +380,13 @@ paragraph(2).borderStyle {
 ```kotlin
 docView {
     document {
-        setText("""
+        text = """
             |Lorem ipsum
             |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
             |Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
             |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
             |Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-        """.trimMargin())
+        """.trimMargin()
 
         characterStyle {
             size = Size.em(1.2f)
@@ -389,22 +412,30 @@ docView {
             }
         }
 
-        paragraph(1).paragraphStyle {
-            align = ParagraphStyle.Align.LEFT
-            firstLeftIndent = Size.em(2f)
+        paragraph(1) {
+            paragraphStyle {
+                align = ParagraphStyle.Align.LEFT
+                firstLeftIndent = Size.em(2f)
+            }
         }
 
-        paragraph(2).paragraphStyle {
-            align = ParagraphStyle.Align.RIGHT
+        paragraph(2) {
+            paragraphStyle {
+                align = ParagraphStyle.Align.RIGHT
+            }
         }
 
-        paragraph(3).paragraphStyle {
-            align = ParagraphStyle.Align.JUSTIFY
+        paragraph(3) {
+            paragraphStyle {
+                align = ParagraphStyle.Align.JUSTIFY
+            }
         }
 
-        paragraph(4).paragraphStyle {
-            align = ParagraphStyle.Align.JUSTIFY
-            lastAlign = ParagraphStyle.Align.CENTER
+        paragraph(4) {
+            paragraphStyle {
+                align = ParagraphStyle.Align.JUSTIFY
+                lastAlign = ParagraphStyle.Align.CENTER
+            }
         }
     }
 }
@@ -424,10 +455,10 @@ docView {
     }
 
     document {
-        setText("Куда ещё тянется провод\u2028из гроба того?\n" +
+        text = "Куда ещё тянется провод\u2028из гроба того?\n" +
                 "Нет, Сталин не умер. Считает он смерть поправимостью.\n" +
                 "Мы вынесли из мавзолея его.\n" +
-                "Но как из наследников Сталина Сталина вынести?")
+                "Но как из наследников Сталина Сталина вынести?"
 
         characterStyle {
             font = "georgia"
@@ -460,10 +491,10 @@ docView {
     }
 
     document {
-        setText("В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ")
+        text = "В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ"
 
-        addWordSpan(1, 4, CharacterStyle(font = "serif"))
-        addWordSpan(5, -1, CharacterStyle(font = "ponomar"))
+        span to word (4) style CharacterStyle(font = "serif")
+        span from word(5) style CharacterStyle(font = "ponomar")
     }
 }
 ```
@@ -496,13 +527,13 @@ docView {
 
 ```kotlin
 // Мягкие переносы для наглядности обозначаем знаком '~', затем их переводим в '\u00AD'
-setText("""
+text = """
     |Lorem ipsum
     |Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.
     |Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.
     |Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.
     |Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui of~fi~cia de~se~runt mol~lit anim id est la~bo~rum.
-    """.trimMargin().replace('~', '\u00AD'))
+    """.trimMargin().replace('~', '\u00AD')
 }
 ```
 
@@ -511,9 +542,6 @@ setText("""
 В некоторых языках (например, в старославянском) используется символ переноса, отличный от стандартного. Изменить это можно при загрузке шрифта:
 
 ```kotlin
-val string = "Прї~и~ди́~те ко мнѣ̀ всѝ трꙋж~да́ю~щї~и~сѧ и҆ ѡ҆б~ре~ме~не́н~нїи, и҆ а҆́зъ оу҆по~ко́ю вы̀. Воз̾~ми́~те и҆́го моѐ на се~бѐ, и҆ на~ꙋ~чи́~те~сѧ ѿ ме~нѐ, ꙗ҆́кѡ кро́~токъ є҆́смь и҆ сми~ре́нъ се́рд~цемъ, и҆ ѡ҆б~рѧ́~ще~те по~ко́й дꙋ~ша́мъ ва́~шымъ. И҆́го бо моѐ бла́~го, и҆ бре́~мѧ моѐ лег~ко̀ є҆́сть."
-        .replace('~', '\u00AD')
-
 docView {
     fontList {
         "ponomar" to Font(
@@ -525,7 +553,8 @@ docView {
     }
 
     document {
-        setText(string)
+        text = "Прї~и~ди́~те ко мнѣ̀ всѝ трꙋж~да́ю~щї~и~сѧ и҆ ѡ҆б~ре~ме~не́н~нїи, и҆ а҆́зъ оу҆по~ко́ю вы̀. Воз̾~ми́~те и҆́го моѐ на се~бѐ, и҆ на~ꙋ~чи́~те~сѧ ѿ ме~нѐ, ꙗ҆́кѡ кро́~токъ є҆́смь и҆ сми~ре́нъ се́рд~цемъ, и҆ ѡ҆б~рѧ́~ще~те по~ко́й дꙋ~ша́мъ ва́~шымъ. И҆́го бо моѐ бла́~го, и҆ бре́~мѧ моѐ лег~ко̀ є҆́сть."
+                .replace('~', '\u00AD')
 
         characterStyle {
             font = "ponomar"
@@ -536,7 +565,7 @@ docView {
             align = ParagraphStyle.Align.JUSTIFY
         }
 
-        addSpan(0, 1, CharacterStyle(color = Color.RED))
+        span on 0 style CharacterStyle(color = Color.RED)
     }
 }
 ```
@@ -548,12 +577,12 @@ docView {
 В `DocumentView` можно включить режим, показывающий базовые линии. Это похоже на разлиновку в тетради:
 
 ```kotlin
-val string = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
-        .replace('~', '\u00AD')
-
 docView {
     baselineMode = DocumentView.Baseline.PARAGRAPH
-    document.setText(string)
+    document {
+        text = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
+                .replace('~', '\u00AD')
+    }
 }
 ```
 
@@ -564,19 +593,17 @@ docView {
 Базовые линии рассчитываются автоматически по максимальным размерам задействованных в строке символов с учётом их смещений относительно базовой линии (`baselineShift`), как это происходит с HTML:
 
 ```kotlin
-val string = """
-        |Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.
-        |Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.
-        |Duis1 aute2 iru~re3 do~lor4 in5 rep~re~hen~de~rit6 in7 vo~lup~ta~te8 ve~lit9 es~se10 cil~lum11 do~lo~re12 eu13 fu~gi~at14 nul~la15 pa~ria~tur16.
-        |Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent1, sunt in cul~pa* qui of~fi~cia de~se~runt mol~lit anim2 id est la~bo~rum.
-        """.trimMargin().replace('~', '\u00AD')
-
 docView {
     baselineMode = DocumentView.Baseline.VIEW
     baselineColor = Color.rgb(0x4B77BE)
 
     document {
-        setText(string)
+        text = """
+            |Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.
+            |Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.
+            |Duis1 aute2 iru~re3 do~lor4 in5 rep~re~hen~de~rit6 in7 vo~lup~ta~te8 ve~lit9 es~se10 cil~lum11 do~lo~re12 eu13 fu~gi~at14 nul~la15 pa~ria~tur16.
+            |Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent1, sunt in cul~pa* qui of~fi~cia de~se~runt mol~lit anim2 id est la~bo~rum.
+            """.trimMargin().replace('~', '\u00AD')
 
         borderStyle {
             verticalPadding = Size.dp(0f)
@@ -595,20 +622,19 @@ docView {
         }
 
         paragraph(1) {
-            addWordSpan(10, CharacterStyle(
-                    size = Size.em(1.4f)))
+            span on word(10) style CharacterStyle(size = Size.em(1.4f))
         }
 
         paragraph(2) {
-            addSpan(Regex("""\d+"""), CharacterStyle(
+            span all Regex("""\d+""") style CharacterStyle(
                     baselineShift = Size.em(0.33f),
-                    size = Size.em(0.58f)))
+                    size = Size.em(0.58f))
         }
 
         paragraph(3) {
-            addSpan(Regex("""\*|\d"""), CharacterStyle(
+            span all Regex("""\*|\d""") style CharacterStyle(
                     baselineShift = Size.em(-0.5f),
-                    size = Size.em(0.58f)))
+                    size = Size.em(0.58f))
         }
     }
 }
@@ -622,20 +648,19 @@ docView {
 
 ```kotlin
 paragraph(1) {
-    addWordSpan(10, CharacterStyle(
-        size = Size.em(1.4f)))
+    span on word(10) style CharacterStyle(size = Size.em(1.4f))
 }
 
 paragraph(2) {
-    addSpan(Regex("""\d+"""), CharacterStyle(
-        verticalAlign = CharacterStyle.VAlign.BOTTOM,
-        size = Size.em(0.58f)))
+    span all Regex("""\d+""") style CharacterStyle(
+            verticalAlign = CharacterStyle.VAlign.BOTTOM,
+            size = Size.em(0.58f))
 }
 
 paragraph(3) {
-    addSpan(Regex("""\*|\d"""), CharacterStyle(
-        verticalAlign = CharacterStyle.VAlign.TOP,
-        size = Size.em(0.58f)))
+    span all Regex("""\*|\d""") style CharacterStyle(
+            verticalAlign = CharacterStyle.VAlign.TOP,
+            size = Size.em(0.58f))
 }
 ```
 
@@ -645,9 +670,9 @@ paragraph(3) {
 
 ```kotlin
 paragraph(2) {
-    addSpan(Regex("""\d+"""), CharacterStyle(
+    span all Regex("""\d+""") style CharacterStyle(
             verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
-            size = Size.em(0.58f)))
+            size = Size.em(0.58f))
 }
 ```
 
@@ -659,16 +684,16 @@ paragraph(2) {
 
 ```kotlin
 paragraph(1) {
-    addWordSpan(10, CharacterStyle(
+    span on word(10) style CharacterStyle(
             size = Size.em(1.4f),
-            leading = Size.dp(0f)))
+            leading = Size.dp(0f))
 }
 
 paragraph(2) {
-    addSpan(Regex("""\d+"""), CharacterStyle(
+    span all Regex("""\d+""") style CharacterStyle(
             verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
             size = Size.em(0.58f),
-            leading = Size.dp(0f)))
+            leading = Size.dp(0f))
 }
 ```
 
@@ -678,16 +703,16 @@ paragraph(2) {
 
 ```kotlin
 paragraph(1) {
-    addWordSpan(10, CharacterStyle(
+    span on word(10) style CharacterStyle(
             size = Size.em(1.4f),
-            leading = Size.ratio(1f)))
+            leading = Size.ratio(1f))
 }
 
 paragraph(2) {
-    addSpan(Regex("""\d+"""), CharacterStyle(
+    span all Regex("""\d+""") style CharacterStyle(
             verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
             size = Size.em(0.58f),
-            leading = Size.ratio(1f)))
+            leading = Size.ratio(1f))
 }
 ```
 
@@ -715,9 +740,9 @@ document {
 
 ```kotlin
 paragraph(0) {
-    addSpan(0, 1, CharacterStyle(
+    span on 0 style CharacterStyle(
             size = Size.em(1.4f),
-            leading = Size.ratio(1f)))
+            leading = Size.ratio(1f))
 }
 ```
 
@@ -727,7 +752,7 @@ paragraph(0) {
 
 ```kotlin
 document {
-    setFirstBaselineToTop = true
+    firstBaselineToTop = true
     ...
 }
 ```
