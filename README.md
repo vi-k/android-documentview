@@ -617,7 +617,6 @@ docView {
             verticalPadding = Size.dp(0f)
             horizontalPadding = Size.dp(8f)
             border = Border.px(1.0f, Color.BLACK)
-            margin = Size.dp(4f)
         }
 
         characterStyle {
