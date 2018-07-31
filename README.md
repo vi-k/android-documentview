@@ -4,10 +4,10 @@
 
 Работа только начата. Пока доступно только самое простое форматирование текста, но уже есть выравнивание по ширине (justification) и обработка мягких переносов.
 
-[document]:https://github.com/vi-k/kotlin-utils/wiki/document
-[html]:https://github.com/vi-k/kotlin-utils/wiki/html
-[htmldocument]:https://github.com/vi-k/kotlin-utils/wiki/htmldocument
-[color]:https://github.com/vi-k/kotlin-utils/wiki/color
+[document]:https://github.com/vi-k/kotlin-utils/blob/master/docs/document.md
+[html]:https://github.com/vi-k/kotlin-utils/blob/master/docs/html.md
+[htmldocument]:https://github.com/vi-k/kotlin-utils/blob/master/docs/htmldocument.md
+[color]:https://github.com/vi-k/kotlin-utils/blob/master/docs/color.md
 
 ## Содержание
 - [Простой пример](#Простой-пример)
