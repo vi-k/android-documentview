@@ -45,8 +45,19 @@ open class DocumentView(context: Context,
     private val log = Logger.getLogger("DocumentView")!!
 
     var document = Document()
+
+//    fun setDocument(document: Document) {
+//        this.document = document
+//    }
+
+    // Для DSL
+//    fun document(init: Document.() -> Unit) {
+//        this.document.init()
+//    }
+
     var fontList = FontList()
     var drawEmptyParagraph = false
+
 
     val deviceMetrics: Size.DeviceMetrics
 
@@ -73,6 +84,12 @@ open class DocumentView(context: Context,
     }
 
     private var segments = mutableListOf<Segment>()
+
+    // Для DSL
+    operator fun invoke(init: DocumentView.() -> Unit): DocumentView {
+        this.init()
+        return this
+    }
 
     /**
      * Функция рисования точки с возможностью её подмены для debug
@@ -103,7 +120,7 @@ open class DocumentView(context: Context,
      * @param width В OnMeasure() ещё не установлена ширина View, поэтому будущую ширину
      * необходимо задать вручную.
      */
-    private fun drawView(canvas: Canvas?, width: Int = this.width): Float {
+    open fun drawView(canvas: Canvas?, width: Int = this.width): Float {
         this.baseline = null
         characterStyle2TextPaint(this.characterStyle, this.cacheLocalMetrics)
 
@@ -150,7 +167,7 @@ open class DocumentView(context: Context,
                 this.deviceMetrics, section.cacheLocalMetrics)
         var sectionBottom = sectionTop
 
-        if (this.baseline == null && section.setFirstBaselineToTop) {
+        if (this.baseline == null && section.firstBaselineToTop) {
             this.baseline = round(sectionTop)
         }
 
@@ -161,7 +178,7 @@ open class DocumentView(context: Context,
         if (canvas == null || section.borderStyle.needForDraw()) {
             // Вычисление размеров, если это необходимо
 
-            for (item in section.paragraphs) {
+            for (item in section.items) {
                 when (item) {
                     is Section -> sectionBottom = drawSection(null, item,
                             section.cacheParagraphStyle, section.cacheCharacterStyle,
@@ -187,7 +204,7 @@ open class DocumentView(context: Context,
 
             sectionBottom = sectionTop
 
-            for (item in section.paragraphs) {
+            for (item in section.items) {
                 when (item) {
                     is Section -> sectionBottom = drawSection(canvas, item,
                             section.cacheParagraphStyle, section.cacheCharacterStyle,
@@ -213,7 +230,7 @@ open class DocumentView(context: Context,
     /**
      * Рисование абзаца или вычисление необходимой высоты абзаца (при canvas == null).
      *
-     * @param canvas Если null, то тоько вычисление высоты.
+     * @param canvas Если null, то только вычисление высоты.
      * @param paragraph Абзац, который необходимо отрисовать.
      * @param parentParagraphStyle Стиль абзаца, переданный от родителя.
      * @param parentCharacterStyle Стиль знаков, переданный от родителя.
@@ -385,12 +402,12 @@ open class DocumentView(context: Context,
                             eol = withEol
                     )
 
-                    this.log.warning("\"${paragraph.text.toString().substring(segment.start,
-                            segment.end)}\" " +
-                            "ascent=$ascent " +
-                            "descent=$descent " +
-                            "leading=$leading"
-                    )
+//                    this.log.warning("\"${paragraph.text.toString().substring(segment.start,
+//                            segment.end)}\" " +
+//                            "ascent=$ascent " +
+//                            "descent=$descent " +
+//                            "leading=$leading"
+//                    )
 
                     var parsed = false // В некоторых случаях надо будет делать два прохода
 
@@ -568,13 +585,13 @@ open class DocumentView(context: Context,
                                 }
                             }
 
-                            this.log.warning("this.baseline=${this.baseline} " +
-                                    "baseline=$baseline " +
-                                    "maxLeading=$maxLeading " +
-                                    "maxAscent=$maxAscent " +
-                                    "maxDescent=$maxDescent " +
-                                    "fullDescent=$fullDescent"
-                            )
+//                            this.log.warning("this.baseline=${this.baseline} " +
+//                                    "baseline=$baseline " +
+//                                    "maxLeading=$maxLeading " +
+//                                    "maxAscent=$maxAscent " +
+//                                    "maxDescent=$maxDescent " +
+//                                    "fullDescent=$fullDescent"
+//                            )
 
                             paragraphBottom = round(baseline + fullDescent)
                             baseline = round(baseline)
