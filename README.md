@@ -190,31 +190,36 @@ paragraph(2) {
 Чтобы использовать другие шрифты, кроме стандартного, их надо создать и добавить в список `fontList`:
 
 ```kotlin
-fontList {
-    "sans_serif" family Font(Typeface.SANS_SERIF)
-    "serif" family Font(Typeface.SERIF)
-    "mono" family Font(Typeface.MONOSPACE)
-}
+docView {
+    document {
+        ...
+        fontList {
+            "sans_serif" family Font(Typeface.SANS_SERIF)
+            "serif" family Font(Typeface.SERIF)
+            "mono" family Font(Typeface.MONOSPACE)
+        }
 
-paragraph(0) {
-    characterStyle {
-        font = "sans_serif"
-    }
-    ...
-}
+        paragraph(0) {
+            characterStyle {
+                font = "sans_serif"
+            }
+            ...
+        }
 
-paragraph(1) {
-    characterStyle {
-        font = "serif"
-    }
-    ...
-}
+        paragraph(1) {
+            characterStyle {
+                font = "serif"
+            }
+            ...
+        }
 
-paragraph(2) {
-    characterStyle {
-        font = "mono"
+        paragraph(2) {
+            characterStyle {
+                font = "mono"
+            }
+            ...
+        }
     }
-    ...
 }
 ```
 
