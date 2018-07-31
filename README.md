@@ -350,6 +350,12 @@ docView {
 Рамки могут быть разными. Сам документ также может иметь отдельную рамку:
 
 ```kotlin
+borderStyle {
+    padding = Size.dp(4f)
+    border = Border.dp(4.0f, Color.rgb(0xF9690E))
+    backgroundColor = Color.argb(0.1f, 0xF9690E)
+}
+
 paragraph(0) {
     borderStyle {
         padding = Size.dp(8f)
