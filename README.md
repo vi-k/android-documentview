@@ -624,12 +624,6 @@ docView {
             |Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent1, sunt in cul~pa* qui of~fi~cia de~se~runt mol~lit anim2 id est la~bo~rum.
             """.trimMargin().replace('~', '\u00AD')
 
-        borderStyle {
-            verticalPadding = Size.dp(0f)
-            horizontalPadding = Size.dp(8f)
-            border = Border.px(1.0f, Color.BLACK)
-        }
-
         characterStyle {
             size = Size.sp(18f)
         }
