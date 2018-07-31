@@ -48,15 +48,15 @@ override fun onCreate(savedInstanceState: Bundle?) {
         document {
             text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ..."
 
-            span from 0 to 5 style CharacterStyle(color = Color.RED)
-            span from 6 to 11 style CharacterStyle(bold = true)
-            span from 12 to 17 style CharacterStyle(italic = true)
-            span from 18 to 21 style CharacterStyle(bold = true, italic = true)
-            span from 22 to 26 style CharacterStyle(underline = true)
-            span from 28 to 39 style CharacterStyle(strike = true)
-            span from 50 to 55 style CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f))
-            span from 60 to 63 style CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f))
-            span from 64 to 71 style CharacterStyle(scaleX = 0.6f)
+            span from 0 to 5 style { color = Color.RED }
+            span from 6 to 11 style { bold = true }
+            span from 12 to 17 style { italic = true }
+            span from 18 to 21 style { bold = true; italic = true }
+            span from 22 to 26 style { underline = true }
+            span from 28 to 39 style { strike = true }
+            span from 50 to 55 style { baselineShift = Size.em(-0.4f); size = Size.em(0.85f) }
+            span from 60 to 63 style { baselineShift = Size.em(0.25f); size = Size.em(0.85f) }
+            span from 64 to 71 style { scaleX = 0.6f }
         }
     }
 }
@@ -69,31 +69,31 @@ override fun onCreate(savedInstanceState: Bundle?) {
 Не всегда удобно отсчитывать количество символов для создания участков, иногда для быстрого форматирования проще прибегнуть к нумерации слов. Для этого в конструкции `span ...` можно использовать функцию `word()`, которая позволяет считать слова (нумерация слов начинается с `1`)
 
 ```kotlin
-span on word(1) style CharacterStyle(color = Color.RED)
-span on word(2) style CharacterStyle(bold = true)
-span on word(3) style CharacterStyle(italic = true)
-span on word(4) style CharacterStyle(bold = true, italic = true)
-span on word(5) style CharacterStyle(underline = true)
-span on word(6) style CharacterStyle(strike = true)
-span on word(8) style CharacterStyle(baselineShift = Size.em(-0.4f), size = Size.em(0.85f))
-span on word(10) style CharacterStyle(baselineShift = Size.em(0.25f), size = Size.em(0.85f))
-span on word(11) style CharacterStyle(scaleX = 0.6f)
+span on word(1) style { color = Color.RED }
+span on word(2) style { bold = true }
+span on word(3) style { italic = true }
+span on word(4) style { bold = true; italic = true }
+span on word(5) style { underline = true }
+span on word(6) style { strike = true }
+span on word(8) style { baselineShift = Size.em(-0.4f); size = Size.em(0.85f) }
+span on word(10) style { baselineShift = Size.em(0.25f); size = Size.em(0.85f) }
+span on word(11) style { scaleX = 0.6f }
 ```
 
 Следующие конструкции равнозначны (выделение одного слова):
 
 ```kotlin
-span on word(n) style CharacterStyle(color = Color.RED)
-span from word(n) to word(n) style CharacterStyle(color = Color.RED)
-span from word(n) count word(1) style CharacterStyle(color = Color.RED)
+span on word(n) style { color = Color.RED }
+span from word(n) to word(n) style { color = Color.RED }
+span from word(n) count word(1) style { color = Color.RED }
 ```
 
 И эти тоже (выделение одного символа):
 
 ```kotlin
-span on n style CharacterStyle(color = Color.RED)
-span from n to n + 1 style CharacterStyle(color = Color.RED)
-span from n count 1 style CharacterStyle(color = Color.RED)
+span on n style { color = Color.RED }
+span from n to n + 1 style { color = Color.RED }
+span from n count 1 style { color = Color.RED }
 ```
 
 Можно использовать также строки и регулярные выражения. Примеры будут ниже.
@@ -105,8 +105,8 @@ documentView {
     document {
         text = "Lorem ipsum dolor sit amet ..."
 
-        span from word(1) to word(3) style CharacterStyle(bold = true)
-        span from word(3) to word(5) style CharacterStyle(italic = true)
+        span from word(1) to word(3) style { bold = true }
+        span from word(3) to word(5) style { italic = true }
     }
 }
 ```
@@ -114,8 +114,8 @@ documentView {
 ![screenshot_2.png](docs/screenshot_2.png)
 
 ```kotlin
-span to word(3) style CharacterStyle(color = Color.RED)
-span from word(3) style CharacterStyle(color = Color.GREEN)
+span to word(3) style { color = Color.RED }
+span from word(3) style { color = Color.GREEN }
 ```
 
 ![screenshot_2_2.png](docs/screenshot_2_2.png)
@@ -242,8 +242,8 @@ documentView {
                 font = "serif1"
             }
 
-            span to "dolor" style CharacterStyle(bold = true)
-            span from "dolor" style CharacterStyle(italic = true)
+            span to "dolor" style { bold = true }
+            span from "dolor" style { italic = true }
         }
 
         paragraph(1) {
@@ -251,8 +251,8 @@ documentView {
                 font = "serif2"
             }
 
-            span to "dolor" style CharacterStyle(bold = true)
-            span from "dolor" style CharacterStyle(italic = true)
+            span to "dolor" style { bold = true }
+            span from "dolor" style { italic = true }
         }
     }
 }
@@ -292,8 +292,8 @@ documentView {
             font = "georgia"
         }
 
-        span from "consectetur" to "incididunt" style CharacterStyle(bold = true)
-        span from "sed" style CharacterStyle(italic = true)
+        span from "consectetur" to "incididunt" style { bold = true }
+        span from "sed" style { italic = true }
     }
 }
 ```
@@ -512,8 +512,8 @@ documentView {
     document {
         text = "В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ"
 
-        span to word (4) style CharacterStyle(font = "serif")
-        span from word(5) style CharacterStyle(font = "ponomar")
+        span to word (4) style { font = "serif" }
+        span from word(5) style { font = "ponomar" }
     }
 }
 ```
@@ -584,7 +584,7 @@ documentView {
             align = ParagraphStyle.Align.JUSTIFY
         }
 
-        span on 0 style CharacterStyle(color = Color.RED)
+        span on 0 style { color = Color.RED }
     }
 }
 ```
@@ -634,19 +634,21 @@ documentView {
         }
 
         paragraph(1) {
-            span on word(10) style CharacterStyle(size = Size.em(1.4f))
+            span on word(10) style { size = Size.em(1.4f) }
         }
 
         paragraph(2) {
-            span all Regex("""\d+""") style CharacterStyle(
-                    baselineShift = Size.em(0.33f),
-                    size = Size.em(0.58f))
+            span all Regex("""\d+""") style {
+                baselineShift = Size.em(0.33f)
+                size = Size.em(0.58f)
+            }
         }
 
         paragraph(3) {
-            span all Regex("""\*|\d""") style CharacterStyle(
-                    baselineShift = Size.em(-0.5f),
-                    size = Size.em(0.58f))
+            span all Regex("""\*|\d""") style {
+                baselineShift = Size.em(-0.5f)
+                size = Size.em(0.58f)
+            }
         }
     }
 }
@@ -660,19 +662,21 @@ documentView {
 
 ```kotlin
 paragraph(1) {
-    span on word(10) style CharacterStyle(size = Size.em(1.4f))
+    span on word(10) style { size = Size.em(1.4f) }
 }
 
 paragraph(2) {
-    span all Regex("""\d+""") style CharacterStyle(
-            verticalAlign = CharacterStyle.VAlign.BOTTOM,
-            size = Size.em(0.58f))
+    span all Regex("""\d+""") style {
+        verticalAlign = CharacterStyle.VAlign.BOTTOM
+        size = Size.em(0.58f)
+    }
 }
 
 paragraph(3) {
-    span all Regex("""\*|\d""") style CharacterStyle(
-            verticalAlign = CharacterStyle.VAlign.TOP,
-            size = Size.em(0.58f))
+    span all Regex("""\*|\d""") style {
+        verticalAlign = CharacterStyle.VAlign.TOP
+        size = Size.em(0.58f)
+    }
 }
 ```
 
@@ -682,9 +686,10 @@ paragraph(3) {
 
 ```kotlin
 paragraph(2) {
-    span all Regex("""\d+""") style CharacterStyle(
-            verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
-            size = Size.em(0.58f))
+    span all Regex("""\d+""") style {
+        verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM
+        size = Size.em(0.58f)
+    }
 }
 ```
 
@@ -696,16 +701,18 @@ paragraph(2) {
 
 ```kotlin
 paragraph(1) {
-    span on word(10) style CharacterStyle(
-            size = Size.em(1.4f),
-            leading = Size.dp(0f))
+    span on word(10) style {
+        size = Size.em(1.4f)
+        leading = Size.dp(0f)
+    }
 }
 
 paragraph(2) {
-    span all Regex("""\d+""") style CharacterStyle(
-            verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
-            size = Size.em(0.58f),
-            leading = Size.dp(0f))
+    span all Regex("""\d+""") style {
+        verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM
+        size = Size.em(0.58f)
+        leading = Size.dp(0f)
+    }
 }
 ```
 
@@ -715,16 +722,18 @@ paragraph(2) {
 
 ```kotlin
 paragraph(1) {
-    span on word(10) style CharacterStyle(
-            size = Size.em(1.4f),
-            leading = Size.ratio(1f))
+    span on word(10) style {
+        size = Size.em(1.4f)
+        leading = Size.ratio(1f)
+    }
 }
 
 paragraph(2) {
-    span all Regex("""\d+""") style CharacterStyle(
-            verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM,
-            size = Size.em(0.58f),
-            leading = Size.ratio(1f))
+    span all Regex("""\d+""") style {
+        verticalAlign = CharacterStyle.VAlign.BASELINE_TO_BOTTOM
+        size = Size.em(0.58f)
+        leading = Size.ratio(1f)
+    }
 }
 ```
 
@@ -752,9 +761,10 @@ document {
 
 ```kotlin
 paragraph(0) {
-    span on 0 style CharacterStyle(
-            size = Size.em(1.4f),
-            leading = Size.ratio(1f))
+    span on 0 style {
+        size = Size.em(1.4f)
+        leading = Size.ratio(1f)
+    }
 }
 ```
 
