@@ -30,7 +30,7 @@ Layout:
 
 ```xml
 <ru.vik.documentview.DocumentView
-    android:id="@+id/docView"
+    android:id="@+id/documentView"
     android:layout_width="match_parent"
     android:layout_height="wrap_content" />
 ```
@@ -42,9 +42,9 @@ override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     setContentView(R.layout.activity_main)
 
-    val docView: DocumentView = findViewById(R.id.docView)
+    val documentView: DocumentView = findViewById(R.id.documentView)
 
-    docView {
+    documentView {
         document {
             text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ..."
 
@@ -101,7 +101,7 @@ span from n count 1 style CharacterStyle(color = Color.RED)
 Участки могут пересекаться. В этом случае они либо дополняют друг друга, либо последний перекрывает первый:
 
 ```kotlin
-docView {
+documentView {
     document {
         text = "Lorem ipsum dolor sit amet ..."
 
@@ -129,7 +129,7 @@ span from word(3) style CharacterStyle(color = Color.GREEN)
 В предыдущих примерах был только один абзац. Если же абзацев несколько, то доступ к каждому осуществляется с помощью функции `paragraph()`:
 
 ```kotlin
-docView {
+documentView {
     document {
         text = """
             |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
@@ -190,7 +190,7 @@ paragraph(2) {
 Чтобы использовать другие шрифты, кроме стандартного, их надо создать и добавить в список `fontList`:
 
 ```kotlin
-docView {
+documentView {
     document {
         ...
         fontList {
@@ -228,7 +228,7 @@ docView {
 С помощью DSL-конструкции `"name" family Font(...)` (или функции `createFamily()`) создаётся сразу 4 шрифта для разных начертаний: нормального, **полужирного**, *курсива* и ***полужирного вместе с курсивом***. Но это возможно только для встроенных шрифтов. Для пользовательских шрифтов все файлы с начертаниями необходимо загрузить отдельно. Если этого не сделать, соответствующий шрифт будет при необходимости генерироваться автоматически. Но специально приготовленные шрифты могут существенно отличаться от генерируемых:
 
 ```kotlin
-docView {
+documentView {
     fontList {
         "serif1" family Font(Typeface.SERIF)
         "serif2" to Font(Typeface.SERIF)
@@ -282,7 +282,7 @@ val commonFontList = FontList {
     "georgia:bold_italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
 }
 
-docView {
+documentView {
     fontList = commonFontList
     
     document {
@@ -305,7 +305,7 @@ docView {
 Абзац можно оформить рамкой:
 
 ```kotlin
-docView {
+documentView {
     document {
         text = """
             |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
@@ -397,7 +397,7 @@ paragraph(2) {
 Для оформления абзацев в наличии имеются отступы сверху и снизу (`spaceBefore`, `spaceAfter`), выравнивание (`align`) по левому краю, по правому, по ширине и относительно центра, отступы слева и справа (`leftIndent`, `rightIndent`), отдельное выравнивание и отступы для первой строки (`firstAlign`, `firstLeftIndent`, `firstRightIndent`), отдельное выравнивание для последней строки (`lastAlign`).
 
 ```kotlin
-docView {
+documentView {
     document {
         text = """
             |Lorem ipsum
@@ -465,7 +465,7 @@ docView {
 Пример оформления стихотворения:
 
 ```kotlin
-docView {
+documentView {
     fontList {
         "georgia" to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
         "georgia:bold" to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
@@ -503,7 +503,7 @@ docView {
 При совместном использовании нескольких шрифтов может возникнуть проблема соотношения реальных размеров знаков для одного и того же кегля:
 
 ```kotlin
-docView {
+documentView {
     fontList {
         "serif" family Font(Typeface.SERIF)
         "ponomar" to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!)
@@ -561,7 +561,7 @@ text = """
 В некоторых языках (например, в старославянском) используется символ переноса, отличный от стандартного. Изменить это можно при загрузке шрифта:
 
 ```kotlin
-docView {
+documentView {
     fontList {
         "ponomar" to Font(
                 typeface = Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
@@ -596,7 +596,7 @@ docView {
 В `DocumentView` можно включить режим, показывающий базовые линии. Это похоже на разлиновку в тетради:
 
 ```kotlin
-docView {
+documentView {
     baselineMode = DocumentView.Baseline.PARAGRAPH
     document {
         text = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
@@ -612,7 +612,7 @@ docView {
 Базовые линии рассчитываются автоматически по максимальным размерам задействованных в строке символов с учётом их смещений относительно базовой линии (`baselineShift`), как это происходит с HTML:
 
 ```kotlin
-docView {
+documentView {
     baselineMode = DocumentView.Baseline.VIEW
     baselineColor = Color.rgb(0x4B77BE)
 
