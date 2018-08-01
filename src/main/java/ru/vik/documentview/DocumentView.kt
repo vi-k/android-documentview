@@ -46,15 +46,6 @@ open class DocumentView(context: Context,
 
     var document = Document()
 
-//    fun setDocument(document: Document) {
-//        this.document = document
-//    }
-
-    // Для DSL
-//    fun document(init: Document.() -> Unit) {
-//        this.document.init()
-//    }
-
     var fontList = FontList()
     var drawEmptyParagraph = false
 
@@ -130,6 +121,15 @@ open class DocumentView(context: Context,
                 (width - this.paddingRight).toFloat())
     }
 
+//    fun measureSection(
+//        section: Section,
+//        parentParagraphStyle: ParagraphStyle,
+//        parentCharacterStyle: CharacterStyle,
+//        parentLocalMetrics: Size.LocalMetrics,
+//        clipTop: Float, clipLeft: Float, clipRight: Float
+//    ): Float {
+//    }
+
     /**
      * Рисование секции или вычисление необходимой высоты секции (при canvas == null).
      *
@@ -148,23 +148,22 @@ open class DocumentView(context: Context,
         clipTop: Float, clipLeft: Float, clipRight: Float
     ): Float {
 
-        section.cacheParagraphStyle
-                .copy(parentParagraphStyle)
-                .attach(section.paragraphStyle)
+        val cache = section.data as? SectionDrawingCache
+                ?: SectionDrawingCache().let { section.data = it; it }
 
-        section.cacheCharacterStyle
-                .copy(parentCharacterStyle)
+        cache.paragraphStyle.copyFrom(parentParagraphStyle).attach(section.paragraphStyle)
+        cache.characterStyle.copyFrom(parentCharacterStyle)
                 .attach(section.characterStyle, this.deviceMetrics, parentLocalMetrics)
 
         // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
         // Размеры уже рассчитаны с учётом density и scaledDensity
-        characterStyle2TextPaint(section.cacheCharacterStyle, section.cacheLocalMetrics)
-        section.cacheLocalMetrics.parentSize = clipRight - clipLeft
+        characterStyle2TextPaint(cache.characterStyle, cache.localMetrics)
+        cache.localMetrics.parentSize = clipRight - clipLeft
 
         // Границы абзаца (нижней границы нет, мы её вычисляем)
         val (sectionTop, sectionLeft, sectionRight) = getInnerBoundary(
                 clipTop, clipLeft, clipRight, section.borderStyle,
-                this.deviceMetrics, section.cacheLocalMetrics)
+                this.deviceMetrics, cache.localMetrics)
         var sectionBottom = sectionTop
 
         if (this.baseline == null && section.firstBaselineToTop) {
@@ -181,19 +180,17 @@ open class DocumentView(context: Context,
             for (item in section.items) {
                 when (item) {
                     is Section -> sectionBottom = drawSection(null, item,
-                            section.cacheParagraphStyle, section.cacheCharacterStyle,
-                            section.cacheLocalMetrics,
+                            cache.paragraphStyle, cache.characterStyle, cache.localMetrics,
                             sectionBottom, sectionLeft, sectionRight)
                     is Paragraph -> sectionBottom = drawParagraph(null, item,
-                            section.cacheParagraphStyle, section.cacheCharacterStyle,
-                            section.cacheLocalMetrics,
+                            cache.paragraphStyle, cache.characterStyle, cache.localMetrics,
                             sectionBottom, sectionLeft, sectionRight)
                 }
             }
 
             if (canvas != null) {
                 drawBorder(canvas, section.borderStyle, sectionTop, sectionLeft, sectionBottom,
-                        sectionRight, section.cacheLocalMetrics)
+                        sectionRight, cache.localMetrics)
             }
         }
 
@@ -207,12 +204,10 @@ open class DocumentView(context: Context,
             for (item in section.items) {
                 when (item) {
                     is Section -> sectionBottom = drawSection(canvas, item,
-                            section.cacheParagraphStyle, section.cacheCharacterStyle,
-                            section.cacheLocalMetrics,
+                            cache.paragraphStyle, cache.characterStyle, cache.localMetrics,
                             sectionBottom, sectionLeft, sectionRight)
                     is Paragraph -> sectionBottom = drawParagraph(canvas, item,
-                            section.cacheParagraphStyle, section.cacheCharacterStyle,
-                            section.cacheLocalMetrics,
+                            cache.paragraphStyle, cache.characterStyle, cache.localMetrics,
                             sectionBottom, sectionLeft, sectionRight)
                 }
             }
@@ -220,11 +215,11 @@ open class DocumentView(context: Context,
 
         return sectionBottom +
                 Size.toPixels(section.borderStyle.paddingBottom,
-                        this.deviceMetrics, section.cacheLocalMetrics) +
+                        this.deviceMetrics, cache.localMetrics) +
                 Size.toPixels(section.borderStyle.borderBottom,
-                        this.deviceMetrics, section.cacheLocalMetrics, useParentSize = false) +
+                        this.deviceMetrics, cache.localMetrics, useParentSize = false) +
                 Size.toPixels(section.borderStyle.marginBottom,
-                        this.deviceMetrics, section.cacheLocalMetrics)
+                        this.deviceMetrics, cache.localMetrics)
     }
 
     /**
@@ -245,38 +240,37 @@ open class DocumentView(context: Context,
         clipTop: Float, clipLeft: Float, clipRight: Float
     ): Float {
 
-        paragraph.cacheParagraphStyle
-                .copy(parentParagraphStyle)
-                .attach(paragraph.paragraphStyle)
+        val cache = paragraph.data as? ParagraphDrawingCache
+                ?: ParagraphDrawingCache().let { paragraph.data = it; it }
 
-        paragraph.cacheCharacterStyle
-                .copy(parentCharacterStyle)
+        cache.paragraphStyle.copyFrom(parentParagraphStyle).attach(paragraph.paragraphStyle)
+        cache.characterStyle.copyFrom(parentCharacterStyle)
                 .attach(paragraph.characterStyle, this.deviceMetrics, parentLocalMetrics)
 
         // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
         // Размеры уже рассчитаны с учётом density и scaledDensity
-        characterStyle2TextPaint(paragraph.cacheCharacterStyle, paragraph.cacheLocalMetrics)
-        paragraph.cacheLocalMetrics.parentSize = clipRight - clipLeft
+        characterStyle2TextPaint(cache.characterStyle, cache.localMetrics)
+        cache.localMetrics.parentSize = clipRight - clipLeft
 
         // Границы абзаца (нижней границы нет, мы её вычисляем)
         val (paragraphTop, paragraphLeft, paragraphRight) =
                 getInnerBoundary(clipTop, clipLeft, clipRight, paragraph.borderStyle,
-                        this.deviceMetrics, paragraph.cacheLocalMetrics)
+                        this.deviceMetrics, cache.localMetrics)
         var paragraphBottom = paragraphTop + Size.toPixels(
-                paragraph.cacheParagraphStyle.spaceBefore,
-                this.deviceMetrics, paragraph.cacheLocalMetrics)
+                cache.paragraphStyle.spaceBefore,
+                this.deviceMetrics, cache.localMetrics)
 
         val baselineLeft by lazy {
             if (this.baselineMode == Baseline.PARAGRAPH) {
                 paragraphLeft - Size.toPixels(paragraph.borderStyle.paddingLeft,
-                        this.deviceMetrics, paragraph.cacheLocalMetrics, horizontal = true)
+                        this.deviceMetrics, cache.localMetrics, horizontal = true)
             } else 0f
         }
 
         val baselineRight by lazy {
             if (this.baselineMode == Baseline.PARAGRAPH) {
                 paragraphRight + Size.toPixels(paragraph.borderStyle.paddingRight,
-                        this.deviceMetrics, paragraph.cacheLocalMetrics, horizontal = true)
+                        this.deviceMetrics, cache.localMetrics, horizontal = true)
             } else this.width.toFloat()
         }
 
@@ -286,22 +280,22 @@ open class DocumentView(context: Context,
             val parser = StringParser(paragraph.text)
 
             val leftIndent = Size.toPixels(
-                    paragraph.cacheParagraphStyle.leftIndent, this.deviceMetrics,
-                    paragraph.cacheLocalMetrics, horizontal = true)
+                    cache.paragraphStyle.leftIndent, this.deviceMetrics,
+                    cache.localMetrics, horizontal = true)
             val rightIndent = Size.toPixels(
-                    paragraph.cacheParagraphStyle.rightIndent, this.deviceMetrics,
-                    paragraph.cacheLocalMetrics, horizontal = true)
+                    cache.paragraphStyle.rightIndent, this.deviceMetrics,
+                    cache.localMetrics, horizontal = true)
             val firstLeftIndent = Size.toPixels(
-                    paragraph.cacheParagraphStyle.firstLeftIndent, this.deviceMetrics,
-                    paragraph.cacheLocalMetrics, horizontal = true)
+                    cache.paragraphStyle.firstLeftIndent, this.deviceMetrics,
+                    cache.localMetrics, horizontal = true)
             val firstRightIndent = Size.toPixels(
-                    paragraph.cacheParagraphStyle.firstRightIndent, this.deviceMetrics,
-                    paragraph.cacheLocalMetrics, horizontal = true)
+                    cache.paragraphStyle.firstRightIndent, this.deviceMetrics,
+                    cache.localMetrics, horizontal = true)
 
             val paragraphWidth = paragraphRight - paragraphLeft
             val lineWidth = paragraphWidth - leftIndent - rightIndent
 
-//            this.log.warning("parentWidth=${paragraph.cacheLocalMetrics.parentSize} " +
+//            this.log.warning("parentWidth=${cache.localMetrics.parentSize} " +
 //                    "paragraphWidth=$paragraphWidth " +
 //                    "lineWidth=$lineWidth " +
 //                    "leftIndent=$leftIndent " +
@@ -319,11 +313,11 @@ open class DocumentView(context: Context,
             // Парсим строку абзаца
             while (!parser.eof()) {
                 // Находим в тексте очередной сегмент с одним стилем
-                val segmentCharacterStyle = paragraph.cacheCharacterStyle.clone()
-                paragraph.cacheSegmentLocalMetrics.copy(paragraph.cacheLocalMetrics)
+                val segmentCharacterStyle = cache.characterStyle.clone()
+                cache.segmentLocalMetrics.copy(cache.localMetrics)
 
                 val segmentFont = parseNextSegment(parser, paragraph,
-                        segmentCharacterStyle, paragraph.cacheSegmentLocalMetrics)
+                        segmentCharacterStyle, cache.segmentLocalMetrics)
 
                 // Разбиваем этот сегмент на более мелкие сегменты по пробелам и знакам переноса
 
@@ -372,13 +366,13 @@ open class DocumentView(context: Context,
                     val leading = segmentCharacterStyle.leading
                             ?.takeIf { it.isNotAuto() }
                             ?.toPixels(
-                                    this.deviceMetrics, paragraph.cacheSegmentLocalMetrics,
+                                    this.deviceMetrics, cache.segmentLocalMetrics,
                                     useParentSize = false)
 
-                    val ascent = paragraph.cacheSegmentLocalMetrics.fontAscent -
-                                segmentCharacterStyle.baselineShift.size
-                    val descent = paragraph.cacheSegmentLocalMetrics.fontDescent +
-                                segmentCharacterStyle.baselineShift.size
+                    val ascent = cache.segmentLocalMetrics.fontAscent -
+                            segmentCharacterStyle.baselineShift.size
+                    val descent = cache.segmentLocalMetrics.fontDescent +
+                            segmentCharacterStyle.baselineShift.size
 
                     val segment = Segment(
                             isFirst = isFirst,
@@ -446,7 +440,7 @@ open class DocumentView(context: Context,
 //                                "textWidth=${segment.textWidth} " +
 //                                "fontSize=${segmentCharacterStyle.size.size} " +
 //                                "parsed=$parsed " +
-//                                "lm.fontsize=${paragraph.cacheSegmentLocalMetrics.fontSize}")
+//                                "lm.fontsize=${cache.segmentLocalMetrics.fontSize}")
 
                         if (out || segment.end == parser.end || segment.eol) {
 
@@ -631,7 +625,7 @@ open class DocumentView(context: Context,
             // Отрисовка
             if (canvas != null) {
                 drawBorder(canvas, paragraph.borderStyle, paragraphTop, paragraphLeft,
-                        paragraphBottom, paragraphRight, paragraph.cacheLocalMetrics)
+                        paragraphBottom, paragraphRight, cache.localMetrics)
 
                 isFirstLine = true
                 var leftOfLine: Float
@@ -663,7 +657,7 @@ open class DocumentView(context: Context,
 
                     // Начало новой строки
                     if (segment.isFirst) {
-                        var align = paragraph.cacheParagraphStyle.align
+                        var align = cache.paragraphStyle.align
                         spaceK = 1f
                         leftOfLine = paragraphLeft + leftIndent
                         rightOfLine = paragraphRight - rightIndent
@@ -671,11 +665,11 @@ open class DocumentView(context: Context,
                         if (isFirstLine) {
                             leftOfLine += firstLeftIndent
                             rightOfLine -= firstRightIndent
-                            paragraph.cacheParagraphStyle.firstAlign?.also { align = it }
+                            cache.paragraphStyle.firstAlign?.also { align = it }
                             isFirstLine = false
                         } else if (segment === lastFirstSegment) {
-                            if (paragraph.cacheParagraphStyle.lastAlign != null)
-                                align = paragraph.cacheParagraphStyle.lastAlign
+                            if (cache.paragraphStyle.lastAlign != null)
+                                align = cache.paragraphStyle.lastAlign
                             else if (align == ParagraphStyle.Align.JUSTIFY) {
                                 align = ParagraphStyle.Align.LEFT
                             }
@@ -746,14 +740,14 @@ open class DocumentView(context: Context,
         }
 
         return paragraphBottom +
-                Size.toPixels(paragraph.cacheParagraphStyle.spaceAfter, this.deviceMetrics,
-                        paragraph.cacheLocalMetrics, useParentSize = false) +
+                Size.toPixels(cache.paragraphStyle.spaceAfter, this.deviceMetrics,
+                        cache.localMetrics, useParentSize = false) +
                 Size.toPixels(paragraph.borderStyle.paddingBottom, this.deviceMetrics,
-                        paragraph.cacheLocalMetrics) +
+                        cache.localMetrics) +
                 Size.toPixels(paragraph.borderStyle.borderBottom, this.deviceMetrics,
-                        paragraph.cacheLocalMetrics, useParentSize = false) +
+                        cache.localMetrics, useParentSize = false) +
                 Size.toPixels(paragraph.borderStyle.marginBottom, this.deviceMetrics,
-                        paragraph.cacheLocalMetrics)
+                        cache.localMetrics)
     }
 
     private fun parseNextSegment(parser: StringParser, paragraph: Paragraph,

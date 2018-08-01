@@ -118,25 +118,24 @@ class DebugDocumentView(context: Context,
         val bottom = super.drawSection(canvas, section, parentParagraphStyle,
                 parentCharacterStyle, parentLocalMetrics, clipTop, clipLeft, clipRight)
 
+        val cache = section.data as SectionDrawingCache
+
         if (canvas != null) {
-            section.cacheCharacterStyle
-                    .copy(parentCharacterStyle)
+            cache.characterStyle.copyFrom(parentCharacterStyle)
                     .attach(section.characterStyle, this.deviceMetrics, parentLocalMetrics)
 
             // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
             // Размеры уже рассчитаны с учётом density и scaledDensity
-            characterStyle2TextPaint(section.cacheCharacterStyle, section.cacheLocalMetrics)
-            section.cacheLocalMetrics.parentSize = clipRight - clipLeft
+            characterStyle2TextPaint(cache.characterStyle, cache.localMetrics)
+            cache.localMetrics.parentSize = clipRight - clipLeft
 
             drawTimeElapsed(canvas, System.currentTimeMillis() - t,
                     clipLeft + Size.toPixels(section.borderStyle.marginLeft, this.deviceMetrics,
-                            section.cacheLocalMetrics) + Size.toPixels(
-                            section.borderStyle.borderLeft, this.deviceMetrics,
-                            section.cacheLocalMetrics, useParentSize = false),
+                            cache.localMetrics) + Size.toPixels(section.borderStyle.borderLeft,
+                            this.deviceMetrics, cache.localMetrics, useParentSize = false),
                     bottom - Size.toPixels(section.borderStyle.marginBottom, this.deviceMetrics,
-                            section.cacheLocalMetrics) - Size.toPixels(
-                            section.borderStyle.borderBottom, this.deviceMetrics,
-                            section.cacheLocalMetrics, useParentSize = false))
+                            cache.localMetrics) - Size.toPixels(section.borderStyle.borderBottom,
+                            this.deviceMetrics, cache.localMetrics, useParentSize = false))
         }
 
         return bottom
@@ -158,25 +157,27 @@ class DebugDocumentView(context: Context,
         val bottom = super.drawParagraph(canvas, paragraph, parentParagraphStyle,
                 parentCharacterStyle, parentLocalMetrics, clipTop, clipLeft, clipRight)
 
+        val cache = paragraph.data as ParagraphDrawingCache
+
         if (canvas != null) {
-            paragraph.cacheCharacterStyle
-                    .copy(parentCharacterStyle)
+            cache.characterStyle
+                    .copyFrom(parentCharacterStyle)
                     .attach(paragraph.characterStyle, this.deviceMetrics, parentLocalMetrics)
 
             // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
             // Размеры уже рассчитаны с учётом density и scaledDensity
-            characterStyle2TextPaint(paragraph.cacheCharacterStyle, paragraph.cacheLocalMetrics)
-            paragraph.cacheLocalMetrics.parentSize = clipRight - clipLeft
+            characterStyle2TextPaint(cache.characterStyle, cache.localMetrics)
+            cache.localMetrics.parentSize = clipRight - clipLeft
 
             drawTimeElapsed(canvas, System.currentTimeMillis() - t,
                     clipLeft + Size.toPixels(paragraph.borderStyle.marginLeft, this.deviceMetrics,
-                            paragraph.cacheLocalMetrics) + Size.toPixels(
+                            cache.localMetrics) + Size.toPixels(
                             paragraph.borderStyle.borderLeft, this.deviceMetrics,
-                            paragraph.cacheLocalMetrics, useParentSize = false),
+                            cache.localMetrics, useParentSize = false),
                     bottom - Size.toPixels(paragraph.borderStyle.marginBottom, this.deviceMetrics,
-                            paragraph.cacheLocalMetrics) - Size.toPixels(
+                            cache.localMetrics) - Size.toPixels(
                             paragraph.borderStyle.borderBottom, this.deviceMetrics,
-                            paragraph.cacheLocalMetrics, useParentSize = false))
+                            cache.localMetrics, useParentSize = false))
         }
 
         return bottom
