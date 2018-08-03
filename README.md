@@ -515,7 +515,7 @@ documentView {
     document {
         text = "В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ"
 
-        span to word (4) style { font = "serif" }
+        span to word(4) style { font = "serif" }
         span from word(5) style { font = "ponomar" }
     }
 }
