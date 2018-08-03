@@ -23,6 +23,7 @@
     - [Интерлиньяж, или межстрочный интервал (`leading`)](#Интерлиньяж-или-межстрочный-интервал-leading)
     - [Синхронизация текстов по базовой линии](#Синхронизация-текстов-по-базовой-линии)
 - [Секции](#Секции)
+- [Схлопывание (`marginCollapsing`)](#Схлопывание-margincollapsing)
 
 ## Простой пример
 
@@ -786,3 +787,181 @@ document {
 ## Секции
 
 Чуть позже.
+
+## Схлопывание (`marginCollapsing`)
+
+```kotlin
+documentView {
+    document {
+        paragraphStyle {
+            align = ParagraphStyle.Align.JUSTIFY
+            spaceBefore = Size.mm(5f)
+            spaceAfter = Size.mm(5f)
+        }
+
+        text = """
+            Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.
+            Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~qu~at.
+            Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.
+        """.trimIndent().replace('~', '\u00AD')
+
+        paragraph(0).borderStyle.backgroundColor = Color.rgb(0x26A65B)
+        paragraph(1).borderStyle.backgroundColor = Color.rgb(0x26A65B)
+        paragraph(2).borderStyle.backgroundColor = Color.rgb(0x26A65B)
+    }
+}
+```
+
+![screenshot_12_1.png](docs/screenshot_12_1.png)
+
+```kotlin
+documentView {
+    marginCollapsing = false
+    ...
+}
+```
+
+![screenshot_12_2.png](docs/screenshot_12_2.png)
+
+```kotlin
+documentView {
+    document {
+        paragraphStyle {
+            align = ParagraphStyle.Align.JUSTIFY
+            spaceBefore = Size.mm(5f)
+            spaceAfter = Size.mm(5f)
+        }
+
+        section {
+            borderStyle {
+                verticalMargin = Size.mm(10f)
+                horizontalPadding = Size.mm(2f)
+                backgroundColor = Color.rgb(0xCF000F)
+            }
+
+            text = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
+                    .replace('~', '\u00AD')
+
+            paragraph(0).borderStyle.backgroundColor = Color.rgb(0x26A65B)
+        }
+    }
+}
+```
+
+![screenshot_13_1.png](docs/screenshot_13_1.png)
+
+```kotlin
+documentView {
+    document {
+        paragraphStyle {
+            ...
+            spaceBefore = Size.mm(10f)
+            spaceAfter = Size.mm(10f)
+        }
+
+        section {
+            borderStyle {
+                verticalMargin = Size.mm(5f)
+                ...
+            }
+            ...
+        }
+    }
+}
+```
+
+![screenshot_13_2.png](docs/screenshot_13_2.png)
+
+```kotlin
+documentView {
+    document {
+        section {
+            borderStyle {
+                border = Border.dp(1f, Color.BLACK)
+                ...
+            }
+            ...
+        }
+    }
+}
+```
+
+![screenshot_13_3.png](docs/screenshot_13_3.png)
+
+![screenshot_13_4.png](docs/screenshot_13_4.png)
+
+```kotlin
+documentView {
+    document {
+        paragraphStyle {
+            align = ParagraphStyle.Align.JUSTIFY
+            spaceBefore = Size.mm(5f)
+            spaceAfter = Size.mm(5f)
+        }
+
+        section {
+            borderStyle {
+                verticalMargin = Size.mm(5f)
+                horizontalPadding = Size.mm(2f)
+                backgroundColor = Color.rgb(0xCF000F)
+            }
+
+            section {
+                text = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
+                        .replace('~', '\u00AD')
+
+                borderStyle {
+                    verticalMargin = Size.mm(5f)
+                    horizontalPadding = Size.mm(2f)
+                    backgroundColor = Color.rgb(0x22A7F0)
+                }
+
+                paragraph(0).borderStyle.backgroundColor = Color.rgb(0x26A65B)
+            }
+        }
+    }
+}
+```
+
+![screenshot_14_1.png](docs/screenshot_14_1.png)
+
+```kotlin
+documentView {
+    document {
+        section {
+            borderStyle {
+                border = Border.dp(1f, Color.BLACK)
+                ...
+            }
+            ...
+        }
+    }
+}
+```
+
+![screenshot_14_2.png](docs/screenshot_14_2.png)
+
+```kotlin
+documentView {
+    document {
+        section {
+            borderStyle {
+                border = Border.dp(1f, Color.BLACK)
+                ...
+            }
+
+            section {
+                borderStyle {
+                    border = Border.dp(1f, Color.BLACK)
+                    ...
+                }
+                ...
+            }
+            ...
+        }
+    }
+}
+```
+
+![screenshot_14_3.png](docs/screenshot_14_3.png)
+
