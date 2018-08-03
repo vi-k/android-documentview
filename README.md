@@ -769,7 +769,7 @@ paragraph(0) {
 }
 ```
 
-<img src="docs/screenshot_13_6.png" width=351>
+<img src="docs/screenshot_13_6.png" width=704>
 
 Интерлиньяж `leading = Size.ratio(1f)` для первой строки не работает! Но есть решение и у этой проблемы. Можно принудительно установить первую базовую строку на самый верх документа. Тогда первая строка текста перестанет "считать" себя первой:
 
@@ -780,7 +780,7 @@ document {
 }
 ```
 
-<img src="docs/screenshot_13_7.png" width=351>
+<img src="docs/screenshot_13_7.png" width=704>
 
 В этом примере первая (пустая) строка проходит по верхней кромке документа, вторая строка (наша первая строка) вычисляется относительно её, и мы получим ожидаемую синхронизацию.
 
@@ -848,7 +848,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_15_1.png" width=351>
+<img src="docs/screenshot_15_1.png" width=704>
 
 ```kotlin
 documentView {
@@ -870,7 +870,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_15_2.png" width=351>
+<img src="docs/screenshot_15_2.png" width=704>
 
 ```kotlin
 documentView {
@@ -886,9 +886,9 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_15_3.png" width=351>
+<img src="docs/screenshot_15_3.png" width=704>
 
-<img src="docs/screenshot_15_4.png" width=351>
+<img src="docs/screenshot_15_4.png" width=704>
 
 ```kotlin
 documentView {
@@ -923,7 +923,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_16_1.png" width=351>
+<img src="docs/screenshot_16_1.png" width=704>
 
 ```kotlin
 documentView {
@@ -939,7 +939,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_16_2.png" width=351>
+<img src="docs/screenshot_16_2.png" width=704>
 
 ```kotlin
 documentView {
@@ -963,6 +963,6 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_16_3.png" width=351>
+<img src="docs/screenshot_16_3.png" width=704>
 
-<img src="docs/screenshot_17.png" width=351>
+<img src="docs/screenshot_17.png" width=704>
