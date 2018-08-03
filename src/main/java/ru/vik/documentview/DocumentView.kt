@@ -21,7 +21,7 @@ open class DocumentView(context: Context,
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
 
-    enum class Baseline { NONE, INDENT, PARAGRAPH, VIEW }
+    enum class Baseline { NONE, CHARACTERS, INDENT, PARAGRAPH, VIEW }
 
     enum class GetFontType { BY_FULL_NAME, BY_SHORT_NAME, DEFAULT }
 
@@ -45,36 +45,45 @@ open class DocumentView(context: Context,
     private val log = Logger.getLogger("DocumentView")!!
 
     var document = Document()
-
     var fontList = FontList()
     var drawEmptyParagraph = false
-
-
+    var marginCollapsing = true
     val deviceMetrics: Size.DeviceMetrics
+    var baselineMode = Baseline.NONE
+    internal val baselinePaint = Paint()
+    internal val textPaint = TextPaint()
+    internal val borderPaint = Paint()
+    internal val drawingData = SectionDrawingData(
+            paragraphStyle = ParagraphStyle.default(),
+            characterStyle = CharacterStyle.default(),
+            localMetrics = Size.LocalMetrics()
+    )
 
-    private val paragraphStyle = ParagraphStyle.default()
-    private val characterStyle = CharacterStyle.default()
-    private val cacheLocalMetrics = Size.LocalMetrics()
+    var baselineColor: Int
+        get() = this.baselinePaint.color
+        set(value) {
+            this.baselinePaint.color = value
+        }
+
+    var baselineWidth: Size
+        get() = Size.px(this.baselinePaint.strokeWidth)
+        set(value) {
+            this.baselinePaint.strokeWidth = value.toPixels(this.deviceMetrics,
+                    0f, 0f, 0f)
+        }
 
     init {
         val displayMetrics = this.context.resources.displayMetrics
         this.deviceMetrics = Size.DeviceMetrics(displayMetrics.density,
                 displayMetrics.scaledDensity, displayMetrics.xdpi, displayMetrics.ydpi)
+
+        this.borderPaint.isAntiAlias = false
+        this.borderPaint.style = Paint.Style.FILL
+
+        this.baselinePaint.isAntiAlias = false
+        baselineColor = Color.rgb(255, 0, 0)
+        baselineWidth = Size.dp(1f)
     }
-
-    var baselineMode = Baseline.NONE
-    var baselineColor = Color.rgb(255, 0, 0)
-
-    internal val textPaint = TextPaint()
-    internal val paint = Paint()
-    internal var baseline: Float? = null
-
-    init {
-        this.paint.isAntiAlias = true
-        this.paint.style = Paint.Style.FILL
-    }
-
-    private var segments = mutableListOf<Segment>()
 
     // Для DSL
     operator fun invoke(init: DocumentView.() -> Unit): DocumentView {
@@ -82,20 +91,40 @@ open class DocumentView(context: Context,
         return this
     }
 
-    /**
-     * Функция рисования точки с возможностью её подмены для debug
-     */
-    open fun drawPoint(canvas: Canvas, x: Float, y: Float, color: Int) {
-        this.paint.color = color
-        canvas.drawPoint(x, y, this.paint)
-    }
+    @SuppressLint("SwitchIntDef")
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val widthMode = View.MeasureSpec.getMode(widthMeasureSpec)
+        val widthSize = View.MeasureSpec.getSize(widthMeasureSpec)
+        val heightMode = View.MeasureSpec.getMode(heightMeasureSpec)
+        val heightSize = View.MeasureSpec.getSize(heightMeasureSpec)
 
-    /**
-     * Функция рисования линии с возможностью её подмены для debug
-     */
-    open fun drawLine(canvas: Canvas, x1: Float, y1: Float, x2: Float, y2: Float, color: Int) {
-        this.paint.color = color
-        canvas.drawLine(x1, y1, x2, y2, this.paint)
+        var minWidth = this.suggestedMinimumWidth
+        var minHeight = this.suggestedMinimumHeight
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            minWidth = max(minWidth, this.minimumWidth)
+            minHeight = max(minHeight, this.minimumHeight)
+        }
+
+        // DocumentView не рассчитан на wrap_content по ширине
+        val width = when (widthMode) {
+            View.MeasureSpec.EXACTLY -> widthSize
+            View.MeasureSpec.AT_MOST -> widthSize // min(desiredWidth, widthSize)
+            else -> minWidth // max(desiredWidth, minWidth)
+        }
+        if (width <= 0) throw IllegalArgumentException("Width of DocumentView cannot be zero")
+
+        val desiredHeight by lazy {
+            measureView(width)
+            ceil(this.drawingData.outerBottom).toInt()
+        }
+
+        val height = when (heightMode) {
+            View.MeasureSpec.EXACTLY -> heightSize
+            View.MeasureSpec.AT_MOST -> min(desiredHeight, heightSize)
+            else -> max(desiredHeight, minHeight)
+        }
+
+        setMeasuredDimension(width, height)
     }
 
     @SuppressLint("DrawAllocation")
@@ -104,198 +133,138 @@ open class DocumentView(context: Context,
         drawView(canvas)
     }
 
-    /**
-     * Рисование View или вычисление необходимой высоты (при canvas == null).
-     *
-     * @param canvas Если null, то только вычисление высоты.
-     * @param width В OnMeasure() ещё не установлена ширина View, поэтому будущую ширину
-     * необходимо задать вручную.
-     */
-    open fun drawView(canvas: Canvas?, width: Int = this.width): Float {
-        this.baseline = null
-        characterStyle2TextPaint(this.characterStyle, this.cacheLocalMetrics)
+    open fun measureView(width: Int = this.width) {
+        applyCharacterStyle(this.drawingData.characterStyle, this.textPaint,
+                this.drawingData.localMetrics)
 
-        return drawSection(canvas, this.document,
-                this.paragraphStyle, this.characterStyle, this.cacheLocalMetrics,
-                this.paddingTop.toFloat(), this.paddingLeft.toFloat(),
-                (width - this.paddingRight).toFloat())
+        this.drawingData.apply {
+            outerTop = 0f
+            outerLeft = 0f
+            outerRight = width.toFloat()
+            innerTop = this@DocumentView.paddingTop.toFloat()
+            innerLeft = this@DocumentView.paddingLeft.toFloat()
+            innerRight = (width - this@DocumentView.paddingRight).toFloat()
+            innerBottom = innerTop
+            outerBottom = innerTop
+        }
+
+        measureSection(this.document, null, this.drawingData, 0f)
+        this.drawingData.outerBottom = this.drawingData.innerBottom + this.paddingBottom
     }
 
-//    fun measureSection(
-//        section: Section,
-//        parentParagraphStyle: ParagraphStyle,
-//        parentCharacterStyle: CharacterStyle,
-//        parentLocalMetrics: Size.LocalMetrics,
-//        clipTop: Float, clipLeft: Float, clipRight: Float
-//    ): Float {
-//    }
+    open fun drawView(canvas: Canvas) {
+        drawSection(canvas, this.document, this.drawingData)
+    }
+
+    @Suppress("NAME_SHADOWING")
+    private fun measureSection(section: Section, baseline: Float?, parent: SectionDrawingData,
+        space: Float
+    ): Float {
+        var baseline = baseline
+        var space = space
+        val data = section.data as? SectionDrawingData
+                ?: SectionDrawingData().let { section.data = it; it }
+
+        data.paragraphStyle.copyFrom(parent.paragraphStyle)
+                .attach(section.paragraphStyle)
+        data.characterStyle.copyFrom(parent.characterStyle)
+                .attach(section.characterStyle, this.deviceMetrics, parent.localMetrics)
+
+        // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
+        // Размеры уже рассчитаны с учётом density и scaledDensity
+        applyCharacterStyle(data.characterStyle, this.textPaint, data.localMetrics)
+        data.localMetrics.parentSize = parent.innerRight - parent.innerLeft
+
+        // Границы секции
+        space = measureBoundary(parent, section.borderStyle, null,
+                this.deviceMetrics, data, space)
+
+        if (baseline == null && section.firstBaselineToTop) baseline = data.innerTop
+
+        for (item in section.items) {
+            when (item) {
+                is Section -> space = measureSection(item, baseline, data, space)
+                is Paragraph -> space = measureParagraph(item, baseline, data, space)
+            }
+        }
+
+        val paddingBottom = Size.toPixels(section.borderStyle.paddingBottom, deviceMetrics,
+                data.localMetrics)
+        val borderBottom = Size.toPixels(section.borderStyle.borderBottom, deviceMetrics,
+                data.localMetrics, useParentSize = false)
+        val marginBottom = Size.toPixels(section.borderStyle.marginBottom,
+                this.deviceMetrics, data.localMetrics)
+
+        if (borderBottom == 0f && paddingBottom == 0f) {
+            data.innerBottom -= space
+            data.outerBottom = data.innerBottom + paddingBottom + borderBottom + marginBottom
+            space = if (this.marginCollapsing) max(space, marginBottom) else 0f
+            parent.innerBottom = max(data.outerBottom, data.innerBottom + space)
+        } else {
+            data.outerBottom = data.innerBottom + paddingBottom + borderBottom + marginBottom
+            parent.innerBottom = data.outerBottom
+            space = if (this.marginCollapsing) marginBottom else 0f
+        }
+
+        return space
+    }
 
     /**
      * Рисование секции или вычисление необходимой высоты секции (при canvas == null).
-     *
-     * @param canvas Если null, то тоько вычисление высоты.
-     * @param section Секция, которую необходимо отрисовать.
-     * @param parentParagraphStyle Стиль абзаца, переданный от родителя.
-     * @param parentCharacterStyle Стиль знаков, переданный от родителя.
-     * @param clipTop
-     * @param clipLeft
-     * @param clipRight Границы секции. Нижняя граница вычисляется.
      */
-    open fun drawSection(canvas: Canvas?, section: Section,
-        parentParagraphStyle: ParagraphStyle,
-        parentCharacterStyle: CharacterStyle,
-        parentLocalMetrics: Size.LocalMetrics,
-        clipTop: Float, clipLeft: Float, clipRight: Float
-    ): Float {
+    open fun drawSection(canvas: Canvas, section: Section, parent: SectionDrawingData
+    ) {
+        val data = section.data as SectionDrawingData
 
-        val cache = section.data as? SectionDrawingCache
-                ?: SectionDrawingCache().let { section.data = it; it }
+        drawBorder(canvas, section.borderStyle, data, 0f, 0f)
 
-        cache.paragraphStyle.copyFrom(parentParagraphStyle).attach(section.paragraphStyle)
-        cache.characterStyle.copyFrom(parentCharacterStyle)
-                .attach(section.characterStyle, this.deviceMetrics, parentLocalMetrics)
-
-        // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
-        // Размеры уже рассчитаны с учётом density и scaledDensity
-        characterStyle2TextPaint(cache.characterStyle, cache.localMetrics)
-        cache.localMetrics.parentSize = clipRight - clipLeft
-
-        // Границы абзаца (нижней границы нет, мы её вычисляем)
-        val (sectionTop, sectionLeft, sectionRight) = getInnerBoundary(
-                clipTop, clipLeft, clipRight, section.borderStyle,
-                this.deviceMetrics, cache.localMetrics)
-        var sectionBottom = sectionTop
-
-        if (this.baseline == null && section.firstBaselineToTop) {
-            this.baseline = round(sectionTop)
-        }
-
-        // Во время расчётов базовая линия будет смещаться. Важно её здесь сохранить, чтобы потом
-        // восстановить перед отрисовкой
-        val savedBaseline = this.baseline
-
-        if (canvas == null || section.borderStyle.needForDraw()) {
-            // Вычисление размеров, если это необходимо
-
-            for (item in section.items) {
-                when (item) {
-                    is Section -> sectionBottom = drawSection(null, item,
-                            cache.paragraphStyle, cache.characterStyle, cache.localMetrics,
-                            sectionBottom, sectionLeft, sectionRight)
-                    is Paragraph -> sectionBottom = drawParagraph(null, item,
-                            cache.paragraphStyle, cache.characterStyle, cache.localMetrics,
-                            sectionBottom, sectionLeft, sectionRight)
-                }
-            }
-
-            if (canvas != null) {
-                drawBorder(canvas, section.borderStyle, sectionTop, sectionLeft, sectionBottom,
-                        sectionRight, cache.localMetrics)
+        for (item in section.items) {
+            when (item) {
+                is Section -> drawSection(canvas, item, data)
+                is Paragraph -> drawParagraph(canvas, item, data)
             }
         }
-
-        this.baseline = savedBaseline
-
-        if (canvas != null) {
-            // Отрисовка
-
-            sectionBottom = sectionTop
-
-            for (item in section.items) {
-                when (item) {
-                    is Section -> sectionBottom = drawSection(canvas, item,
-                            cache.paragraphStyle, cache.characterStyle, cache.localMetrics,
-                            sectionBottom, sectionLeft, sectionRight)
-                    is Paragraph -> sectionBottom = drawParagraph(canvas, item,
-                            cache.paragraphStyle, cache.characterStyle, cache.localMetrics,
-                            sectionBottom, sectionLeft, sectionRight)
-                }
-            }
-        }
-
-        return sectionBottom +
-                Size.toPixels(section.borderStyle.paddingBottom,
-                        this.deviceMetrics, cache.localMetrics) +
-                Size.toPixels(section.borderStyle.borderBottom,
-                        this.deviceMetrics, cache.localMetrics, useParentSize = false) +
-                Size.toPixels(section.borderStyle.marginBottom,
-                        this.deviceMetrics, cache.localMetrics)
     }
 
-    /**
-     * Рисование абзаца или вычисление необходимой высоты абзаца (при canvas == null).
-     *
-     * @param canvas Если null, то только вычисление высоты.
-     * @param paragraph Абзац, который необходимо отрисовать.
-     * @param parentParagraphStyle Стиль абзаца, переданный от родителя.
-     * @param parentCharacterStyle Стиль знаков, переданный от родителя.
-     * @param clipTop
-     * @param clipLeft
-     * @param clipRight Границы секции. Нижняя граница вычисляется.
-     */
-    open fun drawParagraph(canvas: Canvas?, paragraph: Paragraph,
-        parentParagraphStyle: ParagraphStyle,
-        parentCharacterStyle: CharacterStyle,
-        parentLocalMetrics: Size.LocalMetrics,
-        clipTop: Float, clipLeft: Float, clipRight: Float
+    @Suppress("NAME_SHADOWING")
+    private fun measureParagraph(paragraph: Paragraph, baseline: Float?,
+        parent: SectionDrawingData, space: Float
     ): Float {
+        var baseline = baseline
+        val data = paragraph.data as? ParagraphDrawingData
+                ?: ParagraphDrawingData().let { paragraph.data = it; it }
 
-        val cache = paragraph.data as? ParagraphDrawingCache
-                ?: ParagraphDrawingCache().let { paragraph.data = it; it }
-
-        cache.paragraphStyle.copyFrom(parentParagraphStyle).attach(paragraph.paragraphStyle)
-        cache.characterStyle.copyFrom(parentCharacterStyle)
-                .attach(paragraph.characterStyle, this.deviceMetrics, parentLocalMetrics)
+        data.paragraphStyle.copyFrom(parent.paragraphStyle).attach(paragraph.paragraphStyle)
+        data.characterStyle.copyFrom(parent.characterStyle)
+                .attach(paragraph.characterStyle, this.deviceMetrics, parent.localMetrics)
 
         // Метрики, необходимые для рассчёта размеров (если они указаны в em, ratio и fh).
         // Размеры уже рассчитаны с учётом density и scaledDensity
-        characterStyle2TextPaint(cache.characterStyle, cache.localMetrics)
-        cache.localMetrics.parentSize = clipRight - clipLeft
+        applyCharacterStyle(data.characterStyle, this.textPaint, data.localMetrics)
+        data.localMetrics.parentSize = parent.innerRight - parent.innerLeft
 
-        // Границы абзаца (нижней границы нет, мы её вычисляем)
-        val (paragraphTop, paragraphLeft, paragraphRight) =
-                getInnerBoundary(clipTop, clipLeft, clipRight, paragraph.borderStyle,
-                        this.deviceMetrics, cache.localMetrics)
-        var paragraphBottom = paragraphTop + Size.toPixels(
-                cache.paragraphStyle.spaceBefore,
-                this.deviceMetrics, cache.localMetrics)
-
-        val baselineLeft by lazy {
-            if (this.baselineMode == Baseline.PARAGRAPH) {
-                paragraphLeft - Size.toPixels(paragraph.borderStyle.paddingLeft,
-                        this.deviceMetrics, cache.localMetrics, horizontal = true)
-            } else 0f
-        }
-
-        val baselineRight by lazy {
-            if (this.baselineMode == Baseline.PARAGRAPH) {
-                paragraphRight + Size.toPixels(paragraph.borderStyle.paddingRight,
-                        this.deviceMetrics, cache.localMetrics, horizontal = true)
-            } else this.width.toFloat()
-        }
+        // Границы абзаца
+        measureBoundary(parent, paragraph.borderStyle, data.paragraphStyle.spaceBefore,
+                this.deviceMetrics, data, space)
 
         if (paragraph.text.isNotEmpty() || this.drawEmptyParagraph) {
             // Вычисляем размеры абзаца, разбиваем абзац на строки
 
             val parser = StringParser(paragraph.text)
 
-            val leftIndent = Size.toPixels(
-                    cache.paragraphStyle.leftIndent, this.deviceMetrics,
-                    cache.localMetrics, horizontal = true)
-            val rightIndent = Size.toPixels(
-                    cache.paragraphStyle.rightIndent, this.deviceMetrics,
-                    cache.localMetrics, horizontal = true)
-            val firstLeftIndent = Size.toPixels(
-                    cache.paragraphStyle.firstLeftIndent, this.deviceMetrics,
-                    cache.localMetrics, horizontal = true)
-            val firstRightIndent = Size.toPixels(
-                    cache.paragraphStyle.firstRightIndent, this.deviceMetrics,
-                    cache.localMetrics, horizontal = true)
+            data.leftIndent = Size.toPixels(data.paragraphStyle.leftIndent,
+                    this.deviceMetrics, data.localMetrics, horizontal = true)
+            data.rightIndent = Size.toPixels(data.paragraphStyle.rightIndent,
+                    this.deviceMetrics, data.localMetrics, horizontal = true)
+            data.firstLeftIndent = Size.toPixels(data.paragraphStyle.firstLeftIndent,
+                    this.deviceMetrics, data.localMetrics, horizontal = true)
+            data.firstRightIndent = Size.toPixels(data.paragraphStyle.firstRightIndent,
+                    this.deviceMetrics, data.localMetrics, horizontal = true)
 
-            val paragraphWidth = paragraphRight - paragraphLeft
-            val lineWidth = paragraphWidth - leftIndent - rightIndent
+            val paragraphWidth = data.innerRight - data.innerLeft
+            val lineWidth = paragraphWidth - data.leftIndent - data.rightIndent
 
-//            this.log.warning("parentWidth=${cache.localMetrics.parentSize} " +
+//            this.log.warning("parentWidth=${data.localMetrics.parentSize} " +
 //                    "paragraphWidth=$paragraphWidth " +
 //                    "lineWidth=$lineWidth " +
 //                    "leftIndent=$leftIndent " +
@@ -308,16 +277,16 @@ open class DocumentView(context: Context,
             var first = 0
             var isFirstLine = true
 
-            this.segments.clear()
+            data.segments.clear()
 
             // Парсим строку абзаца
             while (!parser.eof()) {
                 // Находим в тексте очередной сегмент с одним стилем
-                val segmentCharacterStyle = cache.characterStyle.clone()
-                cache.segmentLocalMetrics.copy(cache.localMetrics)
+                val segmentCharacterStyle = data.characterStyle.clone()
+                data.segmentLocalMetrics.copyFrom(data.localMetrics)
 
                 val segmentFont = parseNextSegment(parser, paragraph,
-                        segmentCharacterStyle, cache.segmentLocalMetrics)
+                        segmentCharacterStyle, data.segmentLocalMetrics)
 
                 // Разбиваем этот сегмент на более мелкие сегменты по пробелам и знакам переноса
 
@@ -366,12 +335,12 @@ open class DocumentView(context: Context,
                     val leading = segmentCharacterStyle.leading
                             ?.takeIf { it.isNotAuto() }
                             ?.toPixels(
-                                    this.deviceMetrics, cache.segmentLocalMetrics,
+                                    this.deviceMetrics, data.segmentLocalMetrics,
                                     useParentSize = false)
 
-                    val ascent = cache.segmentLocalMetrics.fontAscent -
+                    val ascent = data.segmentLocalMetrics.fontAscent -
                             segmentCharacterStyle.baselineShift.size
-                    val descent = cache.segmentLocalMetrics.fontDescent +
+                    val descent = data.segmentLocalMetrics.fontDescent +
                             segmentCharacterStyle.baselineShift.size
 
                     val segment = Segment(
@@ -409,7 +378,7 @@ open class DocumentView(context: Context,
                         // Собираем сегменты в строку и смотрим, не вышли ли мы за её пределы
 
                         val curLineWidth = max(0f, lineWidth -
-                                if (isFirstLine) firstLeftIndent + firstRightIndent
+                                if (isFirstLine) data.firstLeftIndent + data.firstRightIndent
                                 else 0f)
 
 //                        this.log.warning("\"${paragraph.text.toString().substring(segment.start,
@@ -428,7 +397,7 @@ open class DocumentView(context: Context,
                             // Если за пределы не вышли, то просто добавляем сегмент в список
                             isFirst = false
                             width += segment.spacesWidth + segment.textWidth
-                            this.segments.add(segment)
+                            data.segments.add(segment)
                             parsed = true
                         }
 
@@ -440,14 +409,14 @@ open class DocumentView(context: Context,
 //                                "textWidth=${segment.textWidth} " +
 //                                "fontSize=${segmentCharacterStyle.size.size} " +
 //                                "parsed=$parsed " +
-//                                "lm.fontsize=${cache.segmentLocalMetrics.fontSize}")
+//                                "lm.fontsize=${data.segmentLocalMetrics.fontSize}")
 
                         if (out || segment.end == parser.end || segment.eol) {
 
                             // При выходе за пределы строки, окончании абзаца
                             // и встрече символа переноса строки завершаем последнюю строку
 
-                            var last = this.segments.lastIndex
+                            var last = data.segments.lastIndex
 
                             if (out) {
                                 if (segment.spaces == 0) {
@@ -455,18 +424,18 @@ open class DocumentView(context: Context,
                                     // а только по границе слов. Учитываем это - ищем начало слова,
                                     // чтобы отделить его от текущей строки
                                     while (last >= first) {
-                                        val hyphenWidth = this.segments[last].hyphenWidth
+                                        val hyphenWidth = data.segments[last].hyphenWidth
                                         if (hyphenWidth != 0f) {
                                             var w = hyphenWidth
                                             for (i in first..last) {
-                                                w += this.segments[i].spacesWidth +
-                                                        this.segments[i].textWidth
+                                                w += data.segments[i].spacesWidth +
+                                                        data.segments[i].textWidth
                                             }
 
                                             if (curLineWidth >= w) break
                                         }
 
-                                        if (this.segments[last--].spaces != 0) break
+                                        if (data.segments[last--].spaces != 0) break
                                     }
                                 }
 
@@ -529,8 +498,8 @@ open class DocumentView(context: Context,
 
                                     // Новый сегмент добавляем, а с оставшимся разбираемся
                                     // следующим проходом
-                                    this.segments.add(divSegment)
-                                    last = this.segments.size - 1
+                                    data.segments.add(divSegment)
+                                    last = data.segments.size - 1
                                     width += divSegment.textWidth
 
                                     segment.isFirst = true
@@ -549,7 +518,7 @@ open class DocumentView(context: Context,
                             var isAutoLeading = false
 
                             for (i in first..last) {
-                                val s = this.segments[i]
+                                val s = data.segments[i]
 
                                 fullAscent = max(fullAscent, s.ascent)
                                 fullDescent = max(fullDescent, s.descent)
@@ -564,35 +533,31 @@ open class DocumentView(context: Context,
                             }
 
                             // Варианты расчёта базовой линии:
-                            // 1) Первая строка в документе (this.baseline == null). Интерлиньяж
+                            // 1) Первая строка в документе (baseline == null). Интерлиньяж
                             //    не учитывается, отступ отсчитывается по ascent.
                             // 2) Все символы в строке имеют заданный интерлиньяж
                             //    (isAutoLeading == false), только его и учитываем.
                             // 3) В строке есть символы и с автоматическим интерлиньяжем и
                             //    с установленным. Рассчитываем по максимальному интерлиньяжу.
-                            var baseline = when {
-                                this.baseline == null -> paragraphBottom + fullAscent
-                                !isAutoLeading -> this.baseline!! + maxLeading
+                            baseline = round(when {
+                                baseline == null -> data.innerBottom + fullAscent
+                                !isAutoLeading -> baseline + maxLeading
                                 else -> {
-                                    max(paragraphBottom + maxAscent,
-                                            this.baseline!! + maxLeading)
+                                    max(data.innerBottom + maxAscent, baseline + maxLeading)
                                 }
-                            }
+                            })
 
-//                            this.log.warning("this.baseline=${this.baseline} " +
-//                                    "baseline=$baseline " +
+//                            this.log.warning("baseline=$baseline " +
 //                                    "maxLeading=$maxLeading " +
 //                                    "maxAscent=$maxAscent " +
 //                                    "maxDescent=$maxDescent " +
 //                                    "fullDescent=$fullDescent"
 //                            )
 
-                            paragraphBottom = round(baseline + fullDescent)
-                            baseline = round(baseline)
-                            this.baseline = baseline
+                            data.innerBottom = round(baseline + fullDescent)
 
                             for (i in first..last) {
-                                this.segments[i].baseline = baseline
+                                data.segments[i].baseline = baseline
                             }
 
                             width = 0f
@@ -604,13 +569,13 @@ open class DocumentView(context: Context,
                             } else {
                                 var nextFirstSegment: Segment = segment
 
-                                if (first < this.segments.size) {
-                                    nextFirstSegment = this.segments[first]
+                                if (first < data.segments.size) {
+                                    nextFirstSegment = data.segments[first]
 
                                     // Вычисляем ширину и базовую линию новой строки
                                     // (без последнего сегмента, т.к. он будет рассчитан отдельно)
-                                    for (i in first until this.segments.size) {
-                                        width += with(this.segments[i]) { spacesWidth + textWidth }
+                                    for (i in first until data.segments.size) {
+                                        width += with(data.segments[i]) { spacesWidth + textWidth }
                                     }
                                 }
 
@@ -621,133 +586,158 @@ open class DocumentView(context: Context,
                     }
                 }
             }
+        }
 
-            // Отрисовка
-            if (canvas != null) {
-                drawBorder(canvas, paragraph.borderStyle, paragraphTop, paragraphLeft,
-                        paragraphBottom, paragraphRight, cache.localMetrics)
+        val marginBottom = Size.toPixels(paragraph.borderStyle.marginBottom,
+                this.deviceMetrics, data.localMetrics) +
+                Size.toPixels(data.paragraphStyle.spaceAfter, this.deviceMetrics,
+                        data.localMetrics, useParentSize = false)
 
-                isFirstLine = true
-                var leftOfLine: Float
-                var rightOfLine: Float
-                var x = 0f
-                var spaceK = 1f
-                lateinit var lastFirstSegment: Segment
+        data.outerBottom = data.innerBottom +
+                Size.toPixels(paragraph.borderStyle.paddingBottom, this.deviceMetrics,
+                        data.localMetrics) +
+                Size.toPixels(paragraph.borderStyle.borderBottom, this.deviceMetrics,
+                        data.localMetrics, useParentSize = false) +
+                marginBottom
 
-                // Ищем последнюю строку
-                for (i in this.segments.size - 1 downTo 0) {
-                    if (this.segments[i].isFirst) {
-                        lastFirstSegment = this.segments[i]
-                        break
-                    }
+        parent.innerBottom = data.outerBottom
+        return if (this.marginCollapsing) marginBottom else 0f
+    }
+
+    open fun drawParagraph(canvas: Canvas, paragraph: Paragraph, parent: SectionDrawingData) {
+        val data = paragraph.data as ParagraphDrawingData
+
+        if (paragraph.text.isNotEmpty() || this.drawEmptyParagraph) {
+            drawBorder(canvas, paragraph.borderStyle, data,
+                    Size.toPixels(data.paragraphStyle.spaceBefore,
+                            this.deviceMetrics, data.localMetrics),
+                    Size.toPixels(data.paragraphStyle.spaceAfter,
+                            this.deviceMetrics, data.localMetrics))
+
+            val baselineLeft by lazy {
+                if (this.baselineMode == Baseline.PARAGRAPH) {
+                    data.innerLeft - Size.toPixels(paragraph.borderStyle.paddingLeft,
+                            this.deviceMetrics, data.localMetrics, horizontal = true)
+                } else 0f
+            }
+
+            val baselineRight by lazy {
+                if (this.baselineMode == Baseline.PARAGRAPH) {
+                    data.innerRight + Size.toPixels(paragraph.borderStyle.paddingRight,
+                            this.deviceMetrics, data.localMetrics, horizontal = true)
+                } else this.width.toFloat()
+            }
+
+            var isFirstLine = true
+            var leftOfLine: Float
+            var rightOfLine: Float
+            var x = 0f
+            var spaceK = 1f
+            lateinit var lastFirstSegment: Segment
+
+            // Ищем последнюю строку
+            for (i in data.segments.size - 1 downTo 0) {
+                if (data.segments[i].isFirst) {
+                    lastFirstSegment = data.segments[i]
+                    break
                 }
+            }
 
-                var lastSegmentIndex = 0
-                var lastCharacterStyle: CharacterStyle? = null
+            var lastSegmentIndex = 0
+            var lastCharacterStyle: CharacterStyle? = null
 
-                for (i in 0 until this.segments.size) {
-                    val segment = this.segments[i]
+            for (i in 0 until data.segments.size) {
+                val segment = data.segments[i]
 
-                    // Т.к. текст разбит на слова, то мы не часто будем встречаться со сменой
-                    // параметров шрифта. Незачем тогда и устанавливать их каждый раз заново
-                    if (segment.characterStyle !== lastCharacterStyle) {
-                        characterStyle2TextPaint(segment.characterStyle)
+                // Т.к. текст разбит на слова, то мы не часто будем встречаться со сменой
+                // параметров шрифта. Незачем тогда и устанавливать их каждый раз заново
+                if (segment.characterStyle !== lastCharacterStyle) {
+                    applyCharacterStyle(segment.characterStyle, this.textPaint)
+                }
+                lastCharacterStyle = segment.characterStyle
+
+                // Начало новой строки
+                if (segment.isFirst) {
+                    var align = data.paragraphStyle.align
+                    spaceK = 1f
+                    leftOfLine = data.innerLeft + data.leftIndent
+                    rightOfLine = data.innerRight - data.rightIndent
+
+                    if (isFirstLine) {
+                        leftOfLine += data.firstLeftIndent
+                        rightOfLine -= data.firstRightIndent
+                        data.paragraphStyle.firstAlign?.also { align = it }
+                        isFirstLine = false
+                    } else if (segment === lastFirstSegment) {
+                        if (data.paragraphStyle.lastAlign != null)
+                            align = data.paragraphStyle.lastAlign
+                        else if (align == ParagraphStyle.Align.JUSTIFY) {
+                            align = ParagraphStyle.Align.LEFT
+                        }
                     }
-                    lastCharacterStyle = segment.characterStyle
 
-                    // Начало новой строки
-                    if (segment.isFirst) {
-                        var align = cache.paragraphStyle.align
-                        spaceK = 1f
-                        leftOfLine = paragraphLeft + leftIndent
-                        rightOfLine = paragraphRight - rightIndent
+                    val curLineWidth = rightOfLine - leftOfLine
+                    x = leftOfLine
 
-                        if (isFirstLine) {
-                            leftOfLine += firstLeftIndent
-                            rightOfLine -= firstRightIndent
-                            cache.paragraphStyle.firstAlign?.also { align = it }
-                            isFirstLine = false
-                        } else if (segment === lastFirstSegment) {
-                            if (cache.paragraphStyle.lastAlign != null)
-                                align = cache.paragraphStyle.lastAlign
-                            else if (align == ParagraphStyle.Align.JUSTIFY) {
-                                align = ParagraphStyle.Align.LEFT
-                            }
+                    for (j in i until data.segments.size) {
+                        if (data.segments[j].isFirst && data.segments[j] !== segment) break
+                        lastSegmentIndex = j
+                    }
+
+                    if (align != ParagraphStyle.Align.LEFT) {
+                        var width = data.segments[lastSegmentIndex].hyphenWidth
+                        var spacesWidth = 0f
+                        for (j in i..lastSegmentIndex) {
+                            val p = data.segments[j]
+                            width += p.spacesWidth + p.textWidth
+                            spacesWidth += p.spacesWidth
                         }
 
-                        val curLineWidth = rightOfLine - leftOfLine
-                        x = leftOfLine
-
-                        for (j in i until this.segments.size) {
-                            if (this.segments[j].isFirst && this.segments[j] !== segment) break
-                            lastSegmentIndex = j
-                        }
-
-                        if (align != ParagraphStyle.Align.LEFT) {
-                            width = this.segments[lastSegmentIndex].hyphenWidth
-                            var spacesWidth = 0f
-                            for (j in i..lastSegmentIndex) {
-                                val p = this.segments[j]
-                                width += p.spacesWidth + p.textWidth
-                                spacesWidth += p.spacesWidth
-                            }
-
-                            val diff = curLineWidth - width
-                            when (align) {
-                                ParagraphStyle.Align.RIGHT -> x += diff
-                                ParagraphStyle.Align.CENTER -> x += diff / 2f
-                                else -> {
-                                    spaceK = 1f + diff / spacesWidth
+                        val diff = curLineWidth - width
+                        when (align) {
+                            ParagraphStyle.Align.RIGHT -> x += diff
+                            ParagraphStyle.Align.CENTER -> x += diff / 2f
+                            else -> {
+                                spaceK = 1f + diff / spacesWidth
 //                                    log.info(String.format(
 //                                            "diff: %f  spacesWidth: %f  spaceK: %f",
 //                                            diff, spacesWidth, spaceK))
-                                }
-                            }
-                        }
-
-                        // Базовая линия
-                        if (this.baselineMode != Baseline.NONE) {
-                            this.paint.color = this.baselineColor
-                            if (this.baselineMode == Baseline.PARAGRAPH ||
-                                    this.baselineMode == Baseline.VIEW) {
-                                canvas.drawLine(baselineLeft, segment.baseline, baselineRight,
-                                        segment.baseline,
-                                        this.paint)
-                            } else {
-                                canvas.drawLine(leftOfLine, segment.baseline, rightOfLine,
-                                        segment.baseline, this.paint)
                             }
                         }
                     }
 
-                    x += segment.spacesWidth * if (spaceK.isInfinite()) 0f else spaceK
+                    // Базовая линия
+                    if (this.baselineMode == Baseline.PARAGRAPH ||
+                            this.baselineMode == Baseline.VIEW ||
+                            this.baselineMode == Baseline.INDENT) {
+                        val y = round(segment.baseline)
 
-                    val withHyphen = i == lastSegmentIndex &&
-                            this.segments[lastSegmentIndex].hyphenWidth != 0f
-
-                    // Смещение уже приведено к PX
-                    val baselineShift = segment.characterStyle.baselineShift.size
-
-                    x += drawText(canvas, paragraph.text, segment.start, segment.end,
-                            x, segment.baseline + baselineShift, this.textPaint)
-
-                    if (withHyphen) {
-                        x += drawText(canvas, segment.font.hyphen.toString(),
-                                x, segment.baseline + baselineShift, this.textPaint)
+                        if (this.baselineMode == Baseline.INDENT) {
+                            canvas.drawLine(leftOfLine, y, rightOfLine, y, this.baselinePaint)
+                        } else {
+                            canvas.drawLine(baselineLeft, y, baselineRight, y, this.baselinePaint)
+                        }
                     }
                 }
-            }
-        }
 
-        return paragraphBottom +
-                Size.toPixels(cache.paragraphStyle.spaceAfter, this.deviceMetrics,
-                        cache.localMetrics, useParentSize = false) +
-                Size.toPixels(paragraph.borderStyle.paddingBottom, this.deviceMetrics,
-                        cache.localMetrics) +
-                Size.toPixels(paragraph.borderStyle.borderBottom, this.deviceMetrics,
-                        cache.localMetrics, useParentSize = false) +
-                Size.toPixels(paragraph.borderStyle.marginBottom, this.deviceMetrics,
-                        cache.localMetrics)
+                x += segment.spacesWidth * if (spaceK.isInfinite()) 0f else spaceK
+
+                val withHyphen = i == lastSegmentIndex &&
+                        data.segments[lastSegmentIndex].hyphenWidth != 0f
+
+                // Смещение уже приведено к PX
+                val baselineShift = segment.characterStyle.baselineShift.size
+
+                x += drawText(canvas, paragraph.text, segment.start, segment.end,
+                        x, segment.baseline + baselineShift, this.textPaint)
+
+                if (withHyphen) {
+                    x += drawText(canvas, segment.font.hyphen.toString(),
+                            x, segment.baseline + baselineShift, this.textPaint)
+                }
+            }
+
+        }
     }
 
     private fun parseNextSegment(parser: StringParser, paragraph: Paragraph,
@@ -757,14 +747,14 @@ open class DocumentView(context: Context,
 
         val start = parser.start
         var end = parser.end
-        var font: Font = characterStyle2TextPaint(characterStyle, localMetrics)
+        var font: Font = applyCharacterStyle(characterStyle, this.textPaint, localMetrics)
 
         for (span in paragraph.spans) {
             if (span.start > start) {
                 end = min(end, span.start)
             } else if (span.end > start) {
                 characterStyle.attach(span.characterStyle, this.deviceMetrics, localMetrics)
-                font = characterStyle2TextPaint(characterStyle, localMetrics)
+                font = applyCharacterStyle(characterStyle, this.textPaint, localMetrics)
                 end = min(end, span.end)
             }
         }
@@ -776,22 +766,24 @@ open class DocumentView(context: Context,
 
     /**
      * Установка параметров textPaint из стиля characterStyle.
+     *
+     * Ф-я использует свойство класса: deviceMetrics.
      */
-    internal fun characterStyle2TextPaint(characterStyle: CharacterStyle,
+    internal fun applyCharacterStyle(characterStyle: CharacterStyle, textPaint: TextPaint,
         localMetrics: Size.LocalMetrics? = null
     ): Font {
 
-        this.textPaint.reset()
-        this.textPaint.isAntiAlias = true
+        textPaint.reset()
+        textPaint.isAntiAlias = true
 
         val (font, getFontType) = getFont(characterStyle)
 
         if (getFontType != GetFontType.BY_FULL_NAME) {
-            characterStyle.bold?.also { this.textPaint.isFakeBoldText = it }
-            characterStyle.italic?.also { this.textPaint.textSkewX = if (it) -0.18f else 0f }
+            characterStyle.bold?.also { textPaint.isFakeBoldText = it }
+            characterStyle.italic?.also { textPaint.textSkewX = if (it) -0.18f else 0f }
         }
 
-        this.textPaint.typeface = font.typeface
+        textPaint.typeface = font.typeface
 
         // Размер шрифта уже должен был быть приведён к абсолютному значению, иначе мы не сможем
         // его здесь вычислить. Структура localMetrics передаётся в эту функцию не для
@@ -804,15 +796,15 @@ open class DocumentView(context: Context,
                     1f
                 }
 
-        this.textPaint.textSize = fontSize * font.scale
+        textPaint.textSize = fontSize * font.scale
 
-        this.textPaint.textScaleX = characterStyle.scaleX
-        characterStyle.color?.also { this.textPaint.color = it }
-        characterStyle.strike?.also { this.textPaint.isStrikeThruText = it }
-        characterStyle.underline?.also { this.textPaint.isUnderlineText = it }
+        textPaint.textScaleX = characterStyle.scaleX
+        characterStyle.color?.also { textPaint.color = it }
+        characterStyle.strike?.also { textPaint.isStrikeThruText = it }
+        characterStyle.underline?.also { textPaint.isUnderlineText = it }
 
         localMetrics?.also {
-            val fontMetrics = font.correctFontMetrics(this.textPaint.fontMetrics)
+            val fontMetrics = font.correctFontMetrics(textPaint.fontMetrics)
 
             it.fontSize = fontSize
             it.fontAscent = fontMetrics.leading - fontMetrics.ascent
@@ -829,46 +821,46 @@ open class DocumentView(context: Context,
         return font
     }
 
-    /**
-     * Рисование рамки с учётом разных размеров и цветов каждой из сторон.
-     *
-     * @param canvas Канвас.
-     * @param borderStyle Параметры рамки и размеры отступов.
-     * @param top
-     * @param left
-     * @param bottom
-     * @param right Положение объекта (!) на канвасе.
-     * @param localMetrics Параметры для вычисления отступов и размеров рамки.
-     */
+    internal fun drawBorder(canvas: Canvas, borderStyle: BorderStyle, data: SectionDrawingData,
+        spaceBefore: Float, spaceAfter: Float
+    ) = drawBorder(canvas, borderStyle, data.outerLeft, data.outerTop,
+            data.outerRight, data.outerBottom, spaceBefore, spaceAfter, data.localMetrics)
+
     internal fun drawBorder(canvas: Canvas, borderStyle: BorderStyle,
-        top: Float, left: Float, bottom: Float, right: Float,
+        outerLeft: Float, outerTop: Float, outerRight: Float, outerBottom: Float,
+        spaceBefore: Float, spaceAfter: Float,
         localMetrics: Size.LocalMetrics
     ) {
-
-        val inTop = top - Size.toPixels(borderStyle.paddingTop,
+        val outTop = outerTop + spaceBefore + Size.toPixels(borderStyle.marginTop,
                 this.deviceMetrics, localMetrics)
-        val outTop = inTop - Size.toPixels(borderStyle.borderTop,
-                this.deviceMetrics, localMetrics)
-
-        val inBottom = bottom + Size.toPixels(borderStyle.paddingBottom,
-                this.deviceMetrics, localMetrics)
-        val outBottom = inBottom + Size.toPixels(borderStyle.borderBottom,
+        val inTop = outTop + Size.toPixels(borderStyle.borderTop,
                 this.deviceMetrics, localMetrics)
 
-        val inLeft = left - Size.toPixels(borderStyle.paddingLeft,
-                this.deviceMetrics, localMetrics, horizontal = true)
-        val outLeft = inLeft - Size.toPixels(borderStyle.borderLeft,
-                this.deviceMetrics, localMetrics, horizontal = true)
+        val outBottom = outerBottom - spaceAfter - Size.toPixels(borderStyle.marginBottom,
+                this.deviceMetrics, localMetrics)
+        val inBottom = outBottom - Size.toPixels(borderStyle.borderBottom,
+                this.deviceMetrics, localMetrics)
 
-        val inRight = right + Size.toPixels(borderStyle.paddingRight,
-                this.deviceMetrics, localMetrics, horizontal = true)
-        val outRight = inRight + Size.toPixels(borderStyle.borderRight,
-                this.deviceMetrics, localMetrics, horizontal = true)
+        val outLeft = outerLeft + Size.toPixels(borderStyle.marginLeft,
+                this.deviceMetrics, localMetrics)
+        val inLeft = outLeft + Size.toPixels(borderStyle.borderLeft,
+                this.deviceMetrics, localMetrics)
+
+        val outRight = outerRight - Size.toPixels(borderStyle.marginRight,
+                this.deviceMetrics, localMetrics)
+        val inRight = outRight - Size.toPixels(borderStyle.borderRight,
+                this.deviceMetrics, localMetrics)
+
+        // Отступ
+        if (borderStyle.marginColor != Color.TRANSPARENT) {
+            this.borderPaint.color = borderStyle.marginColor
+            canvas.drawRect(outerLeft, outerTop, outerRight, outerBottom, this.borderPaint)
+        }
 
         // Фон
-        if (borderStyle.backgroundColor != 0) {
-            this.paint.color = borderStyle.backgroundColor
-            canvas.drawRect(outLeft, outTop, outRight, outBottom, this.paint)
+        if (borderStyle.backgroundColor != Color.TRANSPARENT) {
+            this.borderPaint.color = borderStyle.backgroundColor
+            canvas.drawRect(outLeft, outTop, outRight, outBottom, this.borderPaint)
         }
 
         var t = outTop
@@ -881,16 +873,16 @@ open class DocumentView(context: Context,
             t = ceil(inTop)
 
             if (Size.isNotZero(borderStyle.borderLeft)) {
-                drawBorderCorner(canvas, this.paint, outLeft, outTop, inLeft, inTop,
+                drawBorderCorner(canvas, this.borderPaint, outLeft, outTop, inLeft, inTop,
                         borderStyle.borderLeft!!.color, borderStyle.borderTop!!.color)
             }
 
             if (Size.isNotZero(borderStyle.borderRight)) {
-                drawBorderCorner(canvas, this.paint, outRight, outTop, inRight, inTop,
+                drawBorderCorner(canvas, this.borderPaint, outRight, outTop, inRight, inTop,
                         borderStyle.borderRight!!.color, borderStyle.borderTop!!.color)
             }
 
-            drawBorderHLine(canvas, this.paint, l, r, outTop, inTop,
+            drawBorderHLine(canvas, this.borderPaint, l, r, outTop, inTop,
                     borderStyle.borderTop!!.color)
         }
 
@@ -898,26 +890,26 @@ open class DocumentView(context: Context,
             b = floor(inBottom)
 
             if (Size.isNotZero(borderStyle.borderLeft)) {
-                drawBorderCorner(canvas, this.paint, outLeft, outBottom, inLeft, inBottom,
+                drawBorderCorner(canvas, this.borderPaint, outLeft, outBottom, inLeft, inBottom,
                         borderStyle.borderLeft!!.color, borderStyle.borderBottom!!.color)
             }
 
             if (Size.isNotZero(borderStyle.borderRight)) {
-                drawBorderCorner(canvas, this.paint, outRight, outBottom, inRight, inBottom,
+                drawBorderCorner(canvas, this.borderPaint, outRight, outBottom, inRight, inBottom,
                         borderStyle.borderRight!!.color, borderStyle.borderBottom!!.color)
             }
 
-            drawBorderHLine(canvas, this.paint, l, r, inBottom, outBottom,
+            drawBorderHLine(canvas, this.borderPaint, l, r, inBottom, outBottom,
                     borderStyle.borderBottom!!.color)
         }
 
         if (Size.isNotZero(borderStyle.borderLeft)) {
-            drawBorderVLine(canvas, this.paint, t, b, outLeft, inLeft,
+            drawBorderVLine(canvas, this.borderPaint, t, b, outLeft, inLeft,
                     borderStyle.borderLeft!!.color)
         }
 
         if (Size.isNotZero(borderStyle.borderRight)) {
-            drawBorderVLine(canvas, this.paint, t, b, inRight, outRight,
+            drawBorderVLine(canvas, this.borderPaint, t, b, inRight, outRight,
                     borderStyle.borderRight!!.color)
         }
     }
@@ -973,25 +965,23 @@ open class DocumentView(context: Context,
     /**
      * Рисование текста с возможностью рисования базовой линии.
      */
-    internal fun drawText(canvas: Canvas, text: CharSequence, x: Float, y: Float, paint: Paint,
-        drawBaseline: Boolean = false
+    internal fun drawText(canvas: Canvas, text: CharSequence, x: Float, y: Float, paint: Paint
     ): Float {
 
-        return drawText(canvas, text, 0, text.length, x, y, paint, drawBaseline)
+        return drawText(canvas, text, 0, text.length, x, y, paint)
     }
 
     /**
      * Рисование текста с возможностью рисования базовой линии.
      */
     internal fun drawText(canvas: Canvas, text: CharSequence, start: Int, end: Int,
-        x: Float, y: Float, paint: Paint, drawBaseline: Boolean = false
+        x: Float, y: Float, paint: Paint
     ): Float {
 
         val width = paint.measureText(text, start, end)
+        val baseline = round(y)
 
-        if (!drawBaseline) {
-            canvas.drawText(text, start, end, x, y, paint)
-        } else {
+        if (this.baselineMode == Baseline.CHARACTERS) {
             val left = when (paint.textAlign) {
                 Paint.Align.CENTER -> x - width / 2
                 Paint.Align.RIGHT -> x - width
@@ -1000,48 +990,12 @@ open class DocumentView(context: Context,
 
             val right = left + width
 
-            val textColor = paint.color
-            paint.color = this.baselineColor
-            canvas.drawLine(left, y, right, y, paint)
-            paint.color = textColor
-
-            canvas.drawText(text, start, end, x, y, paint)
+            canvas.drawLine(round(left), baseline, round(right), baseline, this.baselinePaint)
         }
+
+        canvas.drawText(text, start, end, round(x), baseline, paint)
 
         return width
-    }
-
-    @SuppressLint("SwitchIntDef")
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val widthMode = View.MeasureSpec.getMode(widthMeasureSpec)
-        val widthSize = View.MeasureSpec.getSize(widthMeasureSpec)
-        val heightMode = View.MeasureSpec.getMode(heightMeasureSpec)
-        val heightSize = View.MeasureSpec.getSize(heightMeasureSpec)
-
-        var minWidth = this.suggestedMinimumWidth
-        var minHeight = this.suggestedMinimumHeight
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            minWidth = max(minWidth, this.minimumWidth)
-            minHeight = max(minHeight, this.minimumHeight)
-        }
-
-        // DocumentView не рассчитан на wrap_content по ширине
-        val width = when (widthMode) {
-            View.MeasureSpec.EXACTLY -> widthSize
-            View.MeasureSpec.AT_MOST -> widthSize // min(desiredWidth, widthSize)
-            else -> minWidth // max(desiredWidth, minWidth)
-        }
-        if (width <= 0) throw IllegalArgumentException("Width of DocumentView cannot be zero")
-
-        val desiredHeight by lazy { ceil(drawView(null, width)).toInt() }
-
-        val height = when (heightMode) {
-            View.MeasureSpec.EXACTLY -> heightSize
-            View.MeasureSpec.AT_MOST -> min(desiredHeight, heightSize)
-            else -> max(desiredHeight, minHeight)
-        }
-
-        setMeasuredDimension(width, height)
     }
 
     /**
@@ -1152,11 +1106,10 @@ open class DocumentView(context: Context,
                     color = horizontalColor.mix(sCom)
                 }
 
-                // TODO: Всё рисуем по точкам, но где-то можно было бы заполнять линиями
-                drawPoint(canvas,
+                this.borderPaint.color = color
+                canvas.drawPoint(
                         (offsetX + signX * px1).toFloat(),
-                        (offsetY + signY * py1).toFloat(),
-                        color)
+                        (offsetY + signY * py1).toFloat(), this.borderPaint)
 
                 py1 = py2
             }
@@ -1216,9 +1169,18 @@ open class DocumentView(context: Context,
             val py2 = py1 + 1f
             val h = min(py2, bottom) - max(py1, top)
 
-            drawLine(canvas, l, py1, r, py1, color.mix(h))
-            if (wl != 0f) drawPoint(canvas, ll, py1, color.mix(h * wl))
-            if (wr != 0f) drawPoint(canvas, rr, py1, color.mix(h * wr))
+            this.borderPaint.color = color.mix(h)
+            canvas.drawLine(l, py1, r, py1, this.borderPaint)
+
+            if (wl != 0f) {
+                this.borderPaint.color = color.mix(h * wl)
+                canvas.drawPoint(ll, py1, this.borderPaint)
+            }
+
+            if (wr != 0f) {
+                this.borderPaint.color = color.mix(h * wr)
+                canvas.drawPoint(rr, py1, this.borderPaint)
+            }
 
             py1 = py2
         }
@@ -1274,9 +1236,18 @@ open class DocumentView(context: Context,
             val px2 = px1 + 1f
             val w = min(px2, right) - max(px1, left)
 
-            drawLine(canvas, px1, t, px1, b, color.mix(w))
-            if (ht != 0f) drawPoint(canvas, px1, tt, color.mix(w * ht))
-            if (hb != 0f) drawPoint(canvas, px1, bb, color.mix(w * hb))
+            this.borderPaint.color = color.mix(w)
+            canvas.drawLine(px1, t, px1, b, this.borderPaint)
+
+            if (ht != 0f) {
+                this.borderPaint.color = color.mix(w * ht)
+                canvas.drawPoint(px1, tt, this.borderPaint)
+            }
+
+            if (hb != 0f) {
+                this.borderPaint.color = color.mix(w * hb)
+                canvas.drawPoint(px1, bb, this.borderPaint)
+            }
 
             px1 = px2
         }
@@ -1287,31 +1258,45 @@ open class DocumentView(context: Context,
     /**
      * Вычисление внутренних границ секций и параграфов.
      */
-    private fun getInnerBoundary(clipTop: Float, clipLeft: Float, clipRight: Float,
-        borderStyle: BorderStyle, deviceMetrics: Size.DeviceMetrics, localMetrics: Size.LocalMetrics
-    ): Triple<Float, Float, Float> {
-        val top = clipTop +
-                Size.toPixels(borderStyle.marginTop,
-                        deviceMetrics, localMetrics) +
-                Size.toPixels(borderStyle.borderTop,
-                        deviceMetrics, localMetrics, useParentSize = false) +
-                Size.toPixels(borderStyle.paddingTop,
-                        deviceMetrics, localMetrics)
-        val left = clipLeft +
-                Size.toPixels(borderStyle.marginLeft,
-                        deviceMetrics, localMetrics, horizontal = true) +
-                Size.toPixels(borderStyle.borderLeft,
-                        deviceMetrics, localMetrics, horizontal = true, useParentSize = false) +
-                Size.toPixels(borderStyle.paddingLeft,
-                        deviceMetrics, localMetrics, horizontal = true)
-        val right = clipRight -
-                Size.toPixels(borderStyle.marginRight,
-                        deviceMetrics, localMetrics, horizontal = true) -
-                Size.toPixels(borderStyle.borderRight,
-                        deviceMetrics, localMetrics, horizontal = true, useParentSize = false) -
-                Size.toPixels(borderStyle.paddingRight,
-                        deviceMetrics, localMetrics, horizontal = true)
+    private fun measureBoundary(parent: SectionDrawingData, borderStyle: BorderStyle,
+        spaceBefore: Size?, deviceMetrics: Size.DeviceMetrics, data: SectionDrawingData,
+        space: Float
+    ): Float {
+        val marginTop = Size.toPixels(spaceBefore, deviceMetrics, data.localMetrics,
+                useParentSize = false) +
+                Size.toPixels(borderStyle.marginTop, deviceMetrics, data.localMetrics)
+        val maxMargin = max(space, marginTop)
 
-        return Triple(top, left, right)
+        data.outerTop = parent.innerBottom - space + maxMargin - marginTop
+        data.outerLeft = parent.innerLeft
+        data.outerRight = parent.innerRight
+
+        val borderTop = Size.toPixels(borderStyle.borderTop, deviceMetrics,
+                data.localMetrics, useParentSize = false)
+        val paddingTop = Size.toPixels(borderStyle.paddingTop, deviceMetrics,
+                data.localMetrics)
+
+        data.innerTop = data.outerTop + marginTop + borderTop + paddingTop
+
+        data.innerLeft = data.outerLeft +
+                Size.toPixels(borderStyle.marginLeft, deviceMetrics, data.localMetrics,
+                        horizontal = true) +
+                Size.toPixels(borderStyle.borderLeft, deviceMetrics, data.localMetrics,
+                        horizontal = true, useParentSize = false) +
+                Size.toPixels(borderStyle.paddingLeft, deviceMetrics, data.localMetrics,
+                        horizontal = true)
+
+        data.innerRight = data.outerRight -
+                Size.toPixels(borderStyle.marginRight, deviceMetrics, data.localMetrics,
+                        horizontal = true) -
+                Size.toPixels(borderStyle.borderRight, deviceMetrics, data.localMetrics,
+                        horizontal = true, useParentSize = false) -
+                Size.toPixels(borderStyle.paddingRight, deviceMetrics, data.localMetrics,
+                        horizontal = true)
+
+        data.innerBottom = data.innerTop
+        data.outerBottom = data.innerTop
+
+        return if (this.marginCollapsing && borderTop == 0f && paddingTop == 0f) maxMargin else 0f
     }
 }
