@@ -849,6 +849,7 @@ documentView {
 ```
 
 ![screenshot_13_1.png](docs/screenshot_13_1.png)
+<img src="docs/screenshot_13_1.png" width=360>
 
 ```kotlin
 documentView {
