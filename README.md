@@ -352,7 +352,6 @@ documentView {
 
 ```kotlin
 borderStyle {
-    padding = Size.dp(4f)
     border = Border.dp(4.0f, Color.rgb(0xF9690E))
     backgroundColor = Color.argb(0.1f, 0xF9690E)
 }
@@ -360,11 +359,12 @@ borderStyle {
 paragraph(0) {
     borderStyle {
         padding = Size.dp(8f)
+        margin = Size.dp(8f)
+
         borderTop = Border.dp(8f, Color.rgb(0xDC3023))
         borderRight = Border.dp(8f, Color.rgb(0x22A7F0))
         borderBottom = Border.dp(8f, Color.rgb(0x26C281))
         borderLeft = Border.dp(8f, Color.rgb(0x9B59B6))
-        margin = Size.dp(4f)
         backgroundColor = Color.argb(0.2f, 0xDC3023)
     }
 }
@@ -372,8 +372,9 @@ paragraph(0) {
 paragraph(1) {
     borderStyle {
         padding = Size.dp(8f)
+        margin = Size.dp(8f)
+
         borderLeft = Border.dp(8f, Color.rgb(0x22A7F0))
-        margin = Size.dp(4f)
         backgroundColor = Color.argb(0.2f, 0x22A7F0)
     }
 }
@@ -381,9 +382,10 @@ paragraph(1) {
 paragraph(2) {
     borderStyle {
         padding = Size.dp(8f)
+        margin = Size.dp(8f)
+
         verticalBorder = Border.dp(8f, Color.TRANSPARENT)
         horizontalBorder = Border.dp(8f, Color.rgb(0x26C281))
-        margin = Size.dp(4f)
         backgroundColor = Color.argb(0.2f, 0x26C281)
     }
 }
