@@ -46,8 +46,6 @@ open class DocumentView(context: Context,
 
     var document = Document()
     var fontList = FontList()
-    var drawEmptyParagraph = false
-    var marginCollapsing = true
     val deviceMetrics: Size.DeviceMetrics
     var baselineMode = Baseline.NONE
     internal val textPaint = TextPaint()
@@ -159,7 +157,8 @@ open class DocumentView(context: Context,
     @Suppress("NAME_SHADOWING")
     private fun measureSection(section: Section, baseline: Float?, parent: SectionDrawingData,
         space: Float
-    ): Float {
+    ): Pair<Float, Float> {
+
         var baseline = baseline
         var space = space
         val data = section.data as? SectionDrawingData
@@ -176,37 +175,58 @@ open class DocumentView(context: Context,
         data.localMetrics.parentSize = parent.innerRight - parent.innerLeft
 
         // Границы секции
-        space = measureBoundary(parent, section.borderStyle, null,
+        space = measureBoundary(section, parent, section.borderStyle, null,
                 this.deviceMetrics, data, space)
+
+        // Если ignoreFirstMargin = true, схлопываем первый попавшийся margin
+        if (section.ignoreFirstMargin) space = -1f
 
         if (baseline == null && section.firstBaselineToTop) baseline = data.innerTop
 
+        // diff - Разница между текущим space и space, который был у потомка. Т.е. то,
+        // что мы можем убрать при ignoreLastMargin
+        var diff = 0f
+        var lastItem: ParagraphItem? = null
+
         for (item in section.items) {
+            lastItem = item
+            lateinit var res: Pair<Float, Float>
             when (item) {
-                is Section -> space = measureSection(item, baseline, data, space)
-                is Paragraph -> space = measureParagraph(item, baseline, data, space)
+                is Section -> res = measureSection(item, baseline, data, space)
+                is Paragraph -> res = measureParagraph(section, item, baseline, data, space)
+            }
+            space = res.first
+            diff = res.second
+        }
+
+        if (section.items.isEmpty()) space = 0f
+
+        (lastItem?.data as? SectionDrawingData)?.also {
+            if (section.ignoreLastMargin) {
+                it.outerBottom -= diff
+                data.innerBottom -= diff
+                space = 0f
             }
         }
 
-        val paddingBottom = Size.toPixels(section.borderStyle.paddingBottom, deviceMetrics,
-                data.localMetrics)
-        val borderBottom = Size.toPixels(section.borderStyle.borderBottom, deviceMetrics,
-                data.localMetrics, useParentSize = false)
+        val paddingBottom = Size.toPixels(section.borderStyle.paddingBottom,
+                this.deviceMetrics, data.localMetrics)
+        val borderBottom = Size.toPixels(section.borderStyle.borderBottom,
+                this.deviceMetrics, data.localMetrics, useParentSize = false)
         val marginBottom = Size.toPixels(section.borderStyle.marginBottom,
                 this.deviceMetrics, data.localMetrics)
 
-        if (borderBottom == 0f && paddingBottom == 0f) {
-            data.innerBottom -= space
-            data.outerBottom = data.innerBottom + paddingBottom + borderBottom + marginBottom
-            space = if (this.marginCollapsing) max(space, marginBottom) else 0f
-            parent.innerBottom = max(data.outerBottom, data.innerBottom + space)
-        } else {
-            data.outerBottom = data.innerBottom + paddingBottom + borderBottom + marginBottom
-            parent.innerBottom = data.outerBottom
-            space = if (this.marginCollapsing) marginBottom else 0f
-        }
+        if (borderBottom != 0f || paddingBottom != 0f) space = 0f
+        data.innerBottom -= space
+        data.outerBottom = data.innerBottom + paddingBottom + borderBottom + marginBottom
 
-        return space
+        var newSpace = max(space, marginBottom)
+        diff = newSpace - space
+        if (!section.marginCollapsing) newSpace = 0f
+
+        parent.innerBottom = max(data.outerBottom, data.innerBottom + newSpace)
+
+        return Pair(newSpace, diff)
     }
 
     /**
@@ -216,20 +236,20 @@ open class DocumentView(context: Context,
     ) {
         val data = section.data as SectionDrawingData
 
-        drawBorder(canvas, section.borderStyle, data, 0f, 0f)
+        drawBorder(canvas, section.borderStyle, data)
 
         for (item in section.items) {
             when (item) {
                 is Section -> drawSection(canvas, item, data)
-                is Paragraph -> drawParagraph(canvas, item, data)
+                is Paragraph -> drawParagraph(canvas, section, item, data)
             }
         }
     }
 
     @Suppress("NAME_SHADOWING")
-    private fun measureParagraph(paragraph: Paragraph, baseline: Float?,
+    private fun measureParagraph(section: Section, paragraph: Paragraph, baseline: Float?,
         parent: SectionDrawingData, space: Float
-    ): Float {
+    ): Pair<Float, Float> {
         var baseline = baseline
         val data = paragraph.data as? ParagraphDrawingData
                 ?: ParagraphDrawingData().let { paragraph.data = it; it }
@@ -244,10 +264,10 @@ open class DocumentView(context: Context,
         data.localMetrics.parentSize = parent.innerRight - parent.innerLeft
 
         // Границы абзаца
-        measureBoundary(parent, paragraph.borderStyle, data.paragraphStyle.spaceBefore,
+        measureBoundary(section, parent, paragraph.borderStyle, data.paragraphStyle.spaceBefore,
                 this.deviceMetrics, data, space)
 
-        if (paragraph.text.isNotEmpty() || this.drawEmptyParagraph) {
+        if (paragraph.text.isNotEmpty() || section.drawEmptyParagraph) {
             // Вычисляем размеры абзаца, разбиваем абзац на строки
 
             val parser = StringParser(paragraph.text)
@@ -601,18 +621,16 @@ open class DocumentView(context: Context,
                 marginBottom
 
         parent.innerBottom = data.outerBottom
-        return if (this.marginCollapsing) marginBottom else 0f
+        return Pair(if (section.marginCollapsing) marginBottom else 0f, marginBottom)
     }
 
-    open fun drawParagraph(canvas: Canvas, paragraph: Paragraph, parent: SectionDrawingData) {
+    open fun drawParagraph(canvas: Canvas, section: Section, paragraph: Paragraph,
+        parent: SectionDrawingData
+    ) {
         val data = paragraph.data as ParagraphDrawingData
 
-        if (paragraph.text.isNotEmpty() || this.drawEmptyParagraph) {
-            drawBorder(canvas, paragraph.borderStyle, data,
-                    Size.toPixels(data.paragraphStyle.spaceBefore,
-                            this.deviceMetrics, data.localMetrics),
-                    Size.toPixels(data.paragraphStyle.spaceAfter,
-                            this.deviceMetrics, data.localMetrics))
+        if (paragraph.text.isNotEmpty() || section.drawEmptyParagraph) {
+            drawBorder(canvas, paragraph.borderStyle, data)
 
             var isFirstLine = true
             var leftOfLine: Float
@@ -814,35 +832,36 @@ open class DocumentView(context: Context,
         return font
     }
 
-    internal fun drawBorder(canvas: Canvas, borderStyle: BorderStyle, data: SectionDrawingData,
-        spaceBefore: Float, spaceAfter: Float
-    ) = drawBorder(canvas, borderStyle, data.outerLeft, data.outerTop,
-            data.outerRight, data.outerBottom, spaceBefore, spaceAfter, data.localMetrics)
+    internal fun drawBorder(canvas: Canvas, borderStyle: BorderStyle, data: SectionDrawingData
+    ) = drawBorder(canvas, borderStyle,
+            data.innerLeft, data.innerTop, data.innerRight, data.innerBottom,
+            data.outerLeft, data.outerTop, data.outerRight, data.outerBottom,
+            data.localMetrics)
 
     internal fun drawBorder(canvas: Canvas, borderStyle: BorderStyle,
+        innerLeft: Float, innerTop: Float, innerRight: Float, innerBottom: Float,
         outerLeft: Float, outerTop: Float, outerRight: Float, outerBottom: Float,
-        spaceBefore: Float, spaceAfter: Float,
         localMetrics: Size.LocalMetrics
     ) {
-        val outTop = outerTop + spaceBefore + Size.toPixels(borderStyle.marginTop,
-                this.deviceMetrics, localMetrics)
-        val inTop = outTop + Size.toPixels(borderStyle.borderTop,
-                this.deviceMetrics, localMetrics)
+        val inTop = innerTop -
+                Size.toPixels(borderStyle.paddingTop, this.deviceMetrics, localMetrics)
+        val outTop = inTop -
+                Size.toPixels(borderStyle.borderTop, this.deviceMetrics, localMetrics)
 
-        val outBottom = outerBottom - spaceAfter - Size.toPixels(borderStyle.marginBottom,
-                this.deviceMetrics, localMetrics)
-        val inBottom = outBottom - Size.toPixels(borderStyle.borderBottom,
-                this.deviceMetrics, localMetrics)
+        val inBottom = innerBottom +
+                Size.toPixels(borderStyle.paddingBottom, this.deviceMetrics, localMetrics)
+        val outBottom = inBottom +
+                Size.toPixels(borderStyle.borderBottom, this.deviceMetrics, localMetrics)
 
-        val outLeft = outerLeft + Size.toPixels(borderStyle.marginLeft,
-                this.deviceMetrics, localMetrics)
-        val inLeft = outLeft + Size.toPixels(borderStyle.borderLeft,
-                this.deviceMetrics, localMetrics)
+        val inLeft = innerLeft -
+                Size.toPixels(borderStyle.paddingLeft, this.deviceMetrics, localMetrics)
+        val outLeft = inLeft -
+                Size.toPixels(borderStyle.borderLeft, this.deviceMetrics, localMetrics)
 
-        val outRight = outerRight - Size.toPixels(borderStyle.marginRight,
-                this.deviceMetrics, localMetrics)
-        val inRight = outRight - Size.toPixels(borderStyle.borderRight,
-                this.deviceMetrics, localMetrics)
+        val inRight = innerRight +
+                Size.toPixels(borderStyle.paddingRight, this.deviceMetrics, localMetrics)
+        val outRight = inRight +
+                Size.toPixels(borderStyle.borderRight, this.deviceMetrics, localMetrics)
 
         // Отступ
         if (borderStyle.marginColor != Color.TRANSPARENT) {
@@ -1250,16 +1269,20 @@ open class DocumentView(context: Context,
     /**
      * Вычисление внутренних границ секций и параграфов.
      */
-    private fun measureBoundary(parent: SectionDrawingData, borderStyle: BorderStyle,
-        spaceBefore: Size?, deviceMetrics: Size.DeviceMetrics, data: SectionDrawingData,
-        space: Float
+    private fun measureBoundary(section: Section, parent: SectionDrawingData,
+        borderStyle: BorderStyle, spaceBefore: Size?, deviceMetrics: Size.DeviceMetrics,
+        data: SectionDrawingData, space: Float
     ): Float {
-        val marginTop = Size.toPixels(spaceBefore, deviceMetrics, data.localMetrics,
-                useParentSize = false) +
-                Size.toPixels(borderStyle.marginTop, deviceMetrics, data.localMetrics)
+        // Если передан space < 0, удаляем marginTop
+        val marginTop =
+                if (space < 0f) 0f
+                else Size.toPixels(spaceBefore, deviceMetrics,
+                        data.localMetrics, useParentSize = false) + Size.toPixels(
+                        borderStyle.marginTop, deviceMetrics, data.localMetrics)
         val maxMargin = max(space, marginTop)
 
-        data.outerTop = parent.innerBottom - space + maxMargin - marginTop
+//        data.outerTop = parent.innerBottom - marginTop + if (space < 0f) 0f else maxMargin - space
+        data.outerTop = parent.innerBottom + if (space < 0f) 0f else maxMargin - space - marginTop
         data.outerLeft = parent.innerLeft
         data.outerRight = parent.innerRight
 
@@ -1291,6 +1314,6 @@ open class DocumentView(context: Context,
         data.innerBottom = data.innerTop
         data.outerBottom = data.innerTop
 
-        return if (this.marginCollapsing && borderTop == 0f && paddingTop == 0f) maxMargin else 0f
+        return if (section.marginCollapsing && borderTop == 0f && paddingTop == 0f) maxMargin else 0f
     }
 }
