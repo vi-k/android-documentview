@@ -21,7 +21,7 @@ open class DocumentView(context: Context,
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context) : this(context, null, 0)
 
-    enum class Baseline { NONE, CHARACTERS, INDENT, PARAGRAPH, VIEW }
+    enum class Baseline { NONE, CHARACTERS, INDENT, PARAGRAPH, SECTION, VIEW }
 
     enum class GetFontType { BY_FULL_NAME, BY_SHORT_NAME, DEFAULT }
 
@@ -50,9 +50,9 @@ open class DocumentView(context: Context,
     var marginCollapsing = true
     val deviceMetrics: Size.DeviceMetrics
     var baselineMode = Baseline.NONE
-    internal val baselinePaint = Paint()
     internal val textPaint = TextPaint()
     internal val borderPaint = Paint()
+    internal val baselinePaint = Paint()
     internal val drawingData = SectionDrawingData(
             paragraphStyle = ParagraphStyle.default(),
             characterStyle = CharacterStyle.default(),
@@ -614,20 +614,6 @@ open class DocumentView(context: Context,
                     Size.toPixels(data.paragraphStyle.spaceAfter,
                             this.deviceMetrics, data.localMetrics))
 
-            val baselineLeft by lazy {
-                if (this.baselineMode == Baseline.PARAGRAPH) {
-                    data.innerLeft - Size.toPixels(paragraph.borderStyle.paddingLeft,
-                            this.deviceMetrics, data.localMetrics, horizontal = true)
-                } else 0f
-            }
-
-            val baselineRight by lazy {
-                if (this.baselineMode == Baseline.PARAGRAPH) {
-                    data.innerRight + Size.toPixels(paragraph.borderStyle.paddingRight,
-                            this.deviceMetrics, data.localMetrics, horizontal = true)
-                } else this.width.toFloat()
-            }
-
             var isFirstLine = true
             var leftOfLine: Float
             var rightOfLine: Float
@@ -707,15 +693,22 @@ open class DocumentView(context: Context,
                     }
 
                     // Базовая линия
-                    if (this.baselineMode == Baseline.PARAGRAPH ||
-                            this.baselineMode == Baseline.VIEW ||
-                            this.baselineMode == Baseline.INDENT) {
-                        val y = round(segment.baseline)
-
-                        if (this.baselineMode == Baseline.INDENT) {
-                            canvas.drawLine(leftOfLine, y, rightOfLine, y, this.baselinePaint)
-                        } else {
-                            canvas.drawLine(baselineLeft, y, baselineRight, y, this.baselinePaint)
+                    when {
+                        this.baselineMode == Baseline.VIEW -> {
+                            canvas.drawLine(0f, segment.baseline,
+                                    this.width.toFloat(), segment.baseline, this.baselinePaint)
+                        }
+                        this.baselineMode == Baseline.SECTION -> {
+                            canvas.drawLine(parent.blockLeft, segment.baseline,
+                                    parent.blockRight, segment.baseline, this.baselinePaint)
+                        }
+                        this.baselineMode == Baseline.PARAGRAPH -> {
+                            canvas.drawLine(data.blockLeft, segment.baseline,
+                                    data.blockRight, segment.baseline, this.baselinePaint)
+                        }
+                        this.baselineMode == Baseline.INDENT -> {
+                            canvas.drawLine(leftOfLine, segment.baseline,
+                                    rightOfLine, segment.baseline, this.baselinePaint)
                         }
                     }
                 }
@@ -1016,7 +1009,6 @@ open class DocumentView(context: Context,
         inX: Float, inY: Float,
         verticalColor: Int, horizontalColor: Int
     ) {
-
         // Для удобства расчётов будем всегда двигаться вправо и вниз,
         // переводя в нужное направление только при выводе
         val signX = if (inX > outX) 1.0 else -1.0
@@ -1278,19 +1270,21 @@ open class DocumentView(context: Context,
 
         data.innerTop = data.outerTop + marginTop + borderTop + paddingTop
 
-        data.innerLeft = data.outerLeft +
+        data.blockLeft = data.outerLeft +
                 Size.toPixels(borderStyle.marginLeft, deviceMetrics, data.localMetrics,
                         horizontal = true) +
                 Size.toPixels(borderStyle.borderLeft, deviceMetrics, data.localMetrics,
-                        horizontal = true, useParentSize = false) +
+                        horizontal = true, useParentSize = false)
+        data.innerLeft = data.blockLeft +
                 Size.toPixels(borderStyle.paddingLeft, deviceMetrics, data.localMetrics,
                         horizontal = true)
 
-        data.innerRight = data.outerRight -
+        data.blockRight = data.outerRight -
                 Size.toPixels(borderStyle.marginRight, deviceMetrics, data.localMetrics,
                         horizontal = true) -
                 Size.toPixels(borderStyle.borderRight, deviceMetrics, data.localMetrics,
-                        horizontal = true, useParentSize = false) -
+                        horizontal = true, useParentSize = false)
+        data.innerRight = data.blockRight -
                 Size.toPixels(borderStyle.paddingRight, deviceMetrics, data.localMetrics,
                         horizontal = true)
 
