@@ -186,21 +186,18 @@ paragraph(0) {
     characterStyle {
         italic = true
     }
-    ...
 }
 
 paragraph(1) {
     characterStyle {
         size = Size.em(0.8f)
     }
-    ...
 }
 
 paragraph(2) {
     characterStyle {
         color = Color.GRAY
     }
-    ...
 }
 ```
 
@@ -222,25 +219,26 @@ documentView {
             "mono" family Font(Typeface.MONOSPACE)
         }
 
+        paragraph(0..2) {
+            span on 0 style CharacterStyle(color = Color.RED)
+        }
+
         paragraph(0) {
             characterStyle {
                 font = "sans_serif"
             }
-            ...
         }
 
         paragraph(1) {
             characterStyle {
                 font = "serif"
             }
-            ...
         }
 
         paragraph(2) {
             characterStyle {
                 font = "mono"
             }
-            ...
         }
     }
 }
@@ -260,22 +258,21 @@ documentView {
     document {
         text = "Lorem ipsum dolor sit amet ...\nLorem ipsum dolor sit amet ..."
 
+        paragraph(0..1) {
+            span to "dolor" style { bold = true }
+            span from "dolor" style { italic = true }
+        }
+
         paragraph(0) {
             characterStyle {
                 font = "serif1"
             }
-
-            span to "dolor" style { bold = true }
-            span from "dolor" style { italic = true }
         }
 
         paragraph(1) {
             characterStyle {
                 font = "serif2"
             }
-
-            span to "dolor" style { bold = true }
-            span from "dolor" style { italic = true }
         }
     }
 }
@@ -336,30 +333,17 @@ documentView {
             |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
             """.trimMargin()
 
-        paragraph(0) {
+        paragraph(0..2) { index ->
             borderStyle {
+                val color = when (index) {
+                    0 -> 0xDC3023
+                    1 -> 0x22A7F0
+                    else -> 0x26C281
+                }
                 padding = Size.dp(8f)
-                border = Border.dp(1f, Color.rgb(0xDC3023))
+                backgroundColor = Color.argb(0.1f, color)
+                border = Border.dp(1f, Color.rgb(color))
                 margin = Size.dp(8f)
-                backgroundColor = Color.argb(0.1f, 0xDC3023)
-            }
-        }
-
-        paragraph(1) {
-            borderStyle {
-                padding = Size.dp(8f)
-                border = Border.dp(1f, Color.rgb(0x22A7F0))
-                margin = Size.dp(8f)
-                backgroundColor = Color.argb(0.1f, 0x22A7F0)
-            }
-        }
-
-        paragraph(2) {
-            borderStyle {
-                padding = Size.dp(8f)
-                border = Border.dp(1f, Color.rgb(0x26C281))
-                margin = Size.dp(8f)
-                backgroundColor = Color.argb(0.1f, 0x26C281)
             }
         }
     }
@@ -378,11 +362,15 @@ borderStyle {
     backgroundColor = Color.argb(0.1f, 0xF9690E)
 }
 
-paragraph(0) {
+paragraph(0..2) {
     borderStyle {
         padding = Size.dp(8f)
         margin = Size.dp(8f)
+    }
+}
 
+paragraph(0) {
+    borderStyle {
         borderTop = Border.dp(8f, Color.rgb(0xDC3023))
         borderRight = Border.dp(8f, Color.rgb(0x22A7F0))
         borderBottom = Border.dp(8f, Color.rgb(0x26C281))
@@ -393,9 +381,6 @@ paragraph(0) {
 
 paragraph(1) {
     borderStyle {
-        padding = Size.dp(8f)
-        margin = Size.dp(8f)
-
         borderLeft = Border.dp(8f, Color.rgb(0x22A7F0))
         backgroundColor = Color.argb(0.2f, 0x22A7F0)
     }
@@ -403,9 +388,6 @@ paragraph(1) {
 
 paragraph(2) {
     borderStyle {
-        padding = Size.dp(8f)
-        margin = Size.dp(8f)
-
         verticalBorder = Border.dp(8f, Color.TRANSPARENT)
         horizontalBorder = Border.dp(8f, Color.rgb(0x26C281))
         backgroundColor = Color.argb(0.2f, 0x26C281)
