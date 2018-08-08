@@ -138,24 +138,46 @@ documentView {
             |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
             """.trimMargin()
 
-        val red = CharacterStyle(color = Color.RED)
-        
         paragraph(0) {
-            span on 0 style red
+            span on 0 style CharacterStyle(color = Color.RED)
         }
 
         paragraph(1) {
-            span on 0 style red
+            span on 0 style CharacterStyle(color = Color.RED)
         }
 
         paragraph(2) {
-            span on 0 style red
+            span on 0 style CharacterStyle(color = Color.RED)
         }
     }
 }
 ```
 
 <img src="docs/screenshot_3_1.png" width=351>
+
+Одинаковые определения можно объединить:
+
+```kotlin
+paragraph(0..2) {
+    span on 0 style CharacterStyle(color = Color.RED)
+}
+```
+
+Или так:
+
+```kotlin
+paragraph(0, 1, 2) {
+    span on 0 style CharacterStyle(color = Color.RED)
+}
+```
+
+В данном конкретном случае можно и так:
+
+```kotlin
+paragraph { // Все абзацы
+    span on 0 style CharacterStyle(color = Color.RED)
+}
+```
 
 У абзаца есть собственные настройки стиля знаков, изменение которого оказывает воздействие на весь абзац:
 
