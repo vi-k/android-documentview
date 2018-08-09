@@ -203,7 +203,7 @@ paragraph(2) {
 
 <img src="docs/screenshot_3_2.png" width=351>
 
-Форматирование, добавленное через `addSpan()`, накладывается поверх общих настроек абзаца.
+Форматирование, добавленное через `span ...`, накладывается поверх общих настроек абзаца.
 
 ## Шрифты
 
@@ -219,7 +219,7 @@ documentView {
             "mono" family Font(Typeface.MONOSPACE)
         }
 
-        paragraph(0..2) {
+        paragraph {
             span on 0 style CharacterStyle(color = Color.RED)
         }
 
@@ -258,7 +258,7 @@ documentView {
     document {
         text = "Lorem ipsum dolor sit amet ...\nLorem ipsum dolor sit amet ..."
 
-        paragraph(0..1) {
+        paragraph {
             span to "dolor" style { bold = true }
             span from "dolor" style { italic = true }
         }
@@ -333,12 +333,13 @@ documentView {
             |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
             """.trimMargin()
 
-        paragraph(0..2) { index ->
+        paragraph { index ->
             borderStyle {
                 val color = when (index) {
                     0 -> 0xDC3023
                     1 -> 0x22A7F0
-                    else -> 0x26C281
+                    2 -> 0x26C281
+                    else -> 0
                 }
                 padding = Size.dp(8f)
                 backgroundColor = Color.argb(0.1f, color)
@@ -362,7 +363,7 @@ borderStyle {
     backgroundColor = Color.argb(0.1f, 0xF9690E)
 }
 
-paragraph(0..2) {
+paragraph {
     borderStyle {
         padding = Size.dp(8f)
         margin = Size.dp(8f)
