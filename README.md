@@ -339,12 +339,6 @@ documentView {
             Lorem ipsum dolor sit amet ...
         """.trimIndent()
 
-        borderStyle {
-            padding = Size.dp(8f)
-            border = Border.px(1f, Color.BLACK)
-            margin = Size.dp(4f)
-        }
-
         characterStyle {
             font = "segoeui"
         }
