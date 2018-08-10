@@ -22,7 +22,7 @@
     - [Выравнивание по вертикали внутри строки (`verticalAlign`)](#Выравнивание-по-вертикали-внутри-строки-verticalalign)
     - [Интерлиньяж, или межстрочный интервал (`leading`)](#Интерлиньяж-или-межстрочный-интервал-leading)
     - [Синхронизация текстов по базовой линии](#Синхронизация-текстов-по-базовой-линии)
-- [Секции](#Секции)
+- [Разделы](#Разделы)
 - [Схлопывание отступов (`marginCollapsing`)](#Схлопывание-отступов-margincollapsing)
     - [Родители и потомки](#Родители-и-потомки)
     - [Лишние отступы сверху и снизу](#Лишние-отступы-сверху-и-снизу)
@@ -135,10 +135,10 @@ span from word(3) style { color = Color.GREEN }
 documentView {
     document {
         text = """
-            |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-            |Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-            |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-            """.trimMargin()
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            """.trimIndent()
 
         paragraph(0) {
             span on 0 style CharacterStyle(color = Color.RED)
@@ -216,9 +216,9 @@ documentView {
     document {
         ...
         fontList {
-            "sans_serif" family Font(Typeface.SANS_SERIF)
-            "serif" family Font(Typeface.SERIF)
-            "mono" family Font(Typeface.MONOSPACE)
+            family("sans_serif") from Font(Typeface.SANS_SERIF)
+            family("serif") from Font(Typeface.SERIF)
+            family("mono") from Font(Typeface.MONOSPACE)
         }
 
         paragraph {
@@ -248,13 +248,17 @@ documentView {
 
 <img src="docs/screenshot_3_3.png" width=351>
 
-С помощью DSL-конструкции `"name" family Font(...)` (или функции `createFamily()`) создаётся сразу 4 шрифта для разных начертаний: нормального, **полужирного**, *курсива* и ***полужирного вместе с курсивом***. Но это возможно только для встроенных шрифтов. Для пользовательских шрифтов все файлы с начертаниями необходимо загрузить отдельно. Если этого не сделать, соответствующий шрифт будет при необходимости генерироваться автоматически. Но специально приготовленные шрифты могут существенно отличаться от генерируемых:
+С помощью DSL-конструкции `family("name") from Font(...)` создаётся сразу 4 шрифта для разных начертаний: нормального, **полужирного**, *курсива* и ***полужирного вместе с курсивом***. Но это возможно только для встроенных шрифтов. Для пользовательских шрифтов все файлы с начертаниями необходимо загрузить отдельно. Если этого не сделать, соответствующий шрифт будет при необходимости генерироваться автоматически. Но специально приготовленные шрифты могут существенно отличаться от генерируемых:
 
 ```kotlin
 documentView {
     fontList {
-        "serif1" family Font(Typeface.SERIF)
-        "serif2" to Font(Typeface.SERIF)
+        family("serif1") from Font(Typeface.SERIF)
+        font("serif2") to Font(Typeface.SERIF)
+        // Или другой вариант:
+        // font("serif2") {
+        //     typeface = Typeface.SERIF
+        // }
     }
 
     document {
@@ -282,26 +286,92 @@ documentView {
 
 <img src="docs/screenshot_4_1.png" width=351>
 
-DSL-конструкция `"name" to Font(...)` (или обращение к списку по индексу: `fontList["name"]`) добавляет только один, указанный, шрифт.
+DSL-конструкция `font("name") to Font(...)` добавляет только один, указанный, шрифт.
 
-Чтобы `DocumentView` в нужные моменты мог задействовать нужные шрифты, при создании шрифта к основному названию надо добавить соответствующий постфикс: `:bold`, `:italic`, `:bold_italic`
+Чтобы `DocumentView` при форматировании текста с различным начертанием мог задействовать нужные шрифты, надо загрузить их, указав в функции `font()` параметры шрифта: `isBold` и `isItalic`:
 
 ```kotlin
-"serif2:bold" to Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
-"serif2:italic" to Font(Typeface.create(Typeface.SERIF, Typeface.ITALIC))
-"serif2:bold_italic" to Font(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC))
+font("serif2", isBold = true) to Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
+font("serif2", isItalic = true) to Font(Typeface.create(Typeface.SERIF, Typeface.ITALIC))
+font("serif2", isBold = true, isItalic = true) to Font(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC))
 ```
 
 <img src="docs/screenshot_4_2.png" width=351>
+
+`DocumentView` поддерживает шрифты с различным `weight`, не только `bold`:
+
+```kotlin
+documentView {
+    fontList {
+        font("segoeui", weight = 100) to Font(Typeface.createFromAsset(assets, "fonts/segoeuil.ttf")!!)
+        font("segoeui", weight = 100, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/seguili.ttf")!!)
+        font("segoeui", weight = 250) to Font(Typeface.createFromAsset(assets, "fonts/segoeuisl.ttf")!!)
+        font("segoeui", weight = 250, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/seguisli.ttf")!!)
+        font("segoeui", weight = 400) to Font(Typeface.createFromAsset(assets, "fonts/segoeui.ttf")!!)
+        font("segoeui", weight = 400, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/segoeuii.ttf")!!)
+        font("segoeui", weight = 550) to Font(Typeface.createFromAsset(assets, "fonts/seguisb.ttf")!!)
+        font("segoeui", weight = 550, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/seguisbi.ttf")!!)
+        font("segoeui", weight = 700) to Font(Typeface.createFromAsset(assets, "fonts/segoeuib.ttf")!!)
+        font("segoeui", weight = 700, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/segoeuiz.ttf")!!)
+        font("segoeui", weight = 900) to Font(Typeface.createFromAsset(assets, "fonts/seguibl.ttf")!!)
+        font("segoeui", weight = 900, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/seguibli.ttf")!!)
+    }
+
+    document {
+        text = """
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+        """.trimIndent()
+
+        borderStyle {
+            padding = Size.dp(8f)
+            border = Border.px(1f, Color.BLACK)
+            margin = Size.dp(4f)
+        }
+
+        characterStyle {
+            font = "segoeui"
+        }
+
+        paragraph { index ->
+            characterStyle {
+                weight = when (index) {
+                    0, 6 -> Font.THIN
+                    1, 7 -> 250
+                    2, 8 -> Font.NORMAL
+                    3, 9 -> 550
+                    4, 10 -> Font.BOLD
+                    5, 11 -> Font.BLACK
+                    else -> Font.NORMAL
+                }
+                italic = index in 0..5
+            }
+        }
+
+    }
+}
+```
+
+<img src="docs/screenshot_4_3.png" width=351>
 
 Если проект использует несколько `DocumentView`, то удобнее создать один список шрифтов и использовать его для всех создаваемых виджетов:
 
 ```kotlin
 val commonFontList = FontList {
-    "georgia" to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
-    "georgia:bold" to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
-    "georgia:italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiai.ttf")!!)
-    "georgia:bold_italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
+    font("georgia") to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
+    font("georgia", isBold = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
+    font("georgia", isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiai.ttf")!!)
+    font("georgia", isBold = true, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
 }
 
 documentView {
@@ -330,10 +400,10 @@ documentView {
 documentView {
     document {
         text = """
-            |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-            |Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-            |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-            """.trimMargin()
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            """.trimIndent()
 
         paragraph { index ->
             borderStyle {
@@ -410,12 +480,12 @@ paragraph(2) {
 documentView {
     document {
         text = """
-            |Lorem ipsum
-            |Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-            |Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-            |Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-            |Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-        """.trimMargin()
+            Lorem ipsum
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+        """.trimIndent()
 
         characterStyle {
             size = Size.em(1.2f)
@@ -477,10 +547,10 @@ documentView {
 ```kotlin
 documentView {
     fontList {
-        "georgia" to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
-        "georgia:bold" to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
-        "georgia:italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiai.ttf")!!)
-        "georgia:bold_italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
+        font("georgia") to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
+        font("georgia", isBold = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
+        font("georgia", isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiai.ttf")!!)
+        font("georgia", isBold = true, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
     }
 
     document {
@@ -515,8 +585,8 @@ documentView {
 ```kotlin
 documentView {
     fontList {
-        "serif" family Font(Typeface.SERIF)
-        "ponomar" to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!)
+        family("serif") from Font(Typeface.SERIF)
+        font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!)
     }
 
     document {
@@ -533,7 +603,7 @@ documentView {
 Можно, конечно, в каждом случае вручную приводить нужный текст к требуемому размеру, а можно скорректировать весь шрифт ещё на этапе его загрузки, задав ему масштаб:
 
 ```kotlin
-"ponomar" to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
         scale = 1.2f)
 ```
 
@@ -542,7 +612,7 @@ documentView {
 Следующей проблемой может оказаться, как в данном случае, слишком большое или слишком маленькое расстояние между строками *(старославянский шрифт требует больше места из-за обилия в языке диакритических знаков)*. Это тоже можно исправить, указав нужные коэффициенты для коррекции верхнего (`ascent`) и нижнего (`descent`) отступов шрифта:
 
 ```kotlin
-"ponomar" to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
         scale = 1.2f, ascentRatio = 0.8f, descentRatio = 0.8f)
 ```
 
@@ -557,12 +627,12 @@ documentView {
 ```kotlin
 // Мягкие переносы для наглядности обозначаем знаком '~', затем их переводим в '\u00AD'
 text = """
-    |Lorem ipsum
-    |Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.
-    |Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.
-    |Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.
-    |Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui of~fi~cia de~se~runt mol~lit anim id est la~bo~rum.
-    """.trimMargin().replace('~', '\u00AD')
+    Lorem ipsum
+    Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.
+    Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.
+    Duis aute iru~re do~lor in rep~re~hen~de~rit in vo~lup~ta~te ve~lit es~se cil~lum do~lo~re eu fu~gi~at nul~la pa~ria~tur.
+    Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent, sunt in cul~pa qui of~fi~cia de~se~runt mol~lit anim id est la~bo~rum.
+    """.trimIndent().replace('~', '\u00AD')
 }
 ```
 
@@ -573,12 +643,13 @@ text = """
 ```kotlin
 documentView {
     fontList {
-        "ponomar" to Font(
-                typeface = Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
-                hyphen = '_', // Символ переноса для старославянского языка
-                ascentRatio = 0.9f,
-                descentRatio = 0.9f,
-                scale = 1.2f)
+        font("ponomar") {
+            typeface = Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!
+            hyphen = '_' // Символ переноса для старославянского языка
+            ascentRatio = 0.9f
+            descentRatio = 0.9f
+            scale = 1.2f
+        }
     }
 
     document {
@@ -628,11 +699,11 @@ documentView {
 
     document {
         text = """
-            |Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.
-            |Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.
-            |Duis1 aute2 iru~re3 do~lor4 in5 rep~re~hen~de~rit6 in7 vo~lup~ta~te8 ve~lit9 es~se10 cil~lum11 do~lo~re12 eu13 fu~gi~at14 nul~la15 pa~ria~tur16.
-            |Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent1, sunt in cul~pa* qui of~fi~cia de~se~runt mol~lit anim2 id est la~bo~rum.
-            """.trimMargin().replace('~', '\u00AD')
+            Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua.
+            Ut enim ad mi~nim ve~niam, qu~is nos~t~rud exer~ci~ta~tion ul~lam~co la~bo~ris ni~si ut ali~qu~ip ex ea com~mo~do con~se~quat.
+            Duis1 aute2 iru~re3 do~lor4 in5 rep~re~hen~de~rit6 in7 vo~lup~ta~te8 ve~lit9 es~se10 cil~lum11 do~lo~re12 eu13 fu~gi~at14 nul~la15 pa~ria~tur16.
+            Ex~cep~te~ur sint oc~cae~cat cu~pi~da~tat non pro~i~dent1, sunt in cul~pa* qui of~fi~cia de~se~runt mol~lit anim2 id est la~bo~rum.
+            """.trimIndent().replace('~', '\u00AD')
 
         characterStyle {
             size = Size.sp(18f)
@@ -728,7 +799,7 @@ paragraph(2) {
 
 <img src="docs/screenshot_13_4.png" width=351>
 
-Только бы не оказалось так, что в строке не окажется ни одного символа с ненулевым размером! Строки слипнутся! Избежать этого можно, установив интерлиньяж равным высоте базового шрифта через `Size.ratio()`. Если в абзацных отступах `ratio` это доля от ширины родительской секции, в шрифтах - доля от кегля базового шрифта (тоже самое, что `em`), то при вычислении интерлиньяжа `ratio` это доля от высоты (не кегля!) базового (а не текущего!) шрифта (`em` и `fh` вычисляются от размера текущего шрифта):
+Только бы не оказалось так, что в строке не окажется ни одного символа с ненулевым размером! Строки слипнутся! Избежать этого можно, установив интерлиньяж равным высоте базового шрифта через `Size.ratio()`. Если в абзацных отступах `ratio` это доля от ширины родительского раздела, в шрифтах - доля от кегля базового шрифта (тоже самое, что `em`), то при вычислении интерлиньяжа `ratio` это доля от высоты (не кегля!) базового (а не текущего!) шрифта (`em` и `fh` вычисляются от размера текущего шрифта):
 
 ```kotlin
 paragraph(1) {
@@ -793,13 +864,13 @@ document {
 
 В этом примере первая (пустая) строка проходит по верхней кромке документа, вторая строка (наша первая строка) вычисляется относительно её, и мы получим ожидаемую синхронизацию.
 
-## Секции
+## Разделы
 
 Чуть позже.
 
 ## Схлопывание отступов (`marginCollapsing`)
 
-По-умолчанию, вертикальные внешние отступы (`margin`) абзацев и секций соединяются (схлопываются) в один, равный максимальному (а не суммируются):
+По-умолчанию, вертикальные внешние отступы (`margin`) абзацев и разделов соединяются (схлопываются) в один, равный максимальному (а не суммируются):
 
 ```kotlin
 documentView {
@@ -843,7 +914,7 @@ documentView {
 
 ### Родители и потомки
 
-Схлопывание работает не только с абзацами, идущими друг за другом, но и между родительской секцией и её потомками. В следущем примере секция выделена красным цветом, а абзац внутри неё зелёным:
+Схлопывание работает не только с абзацами, идущими друг за другом, но и между родительским разделом и его потомками. В следущем примере раздел выделен красным цветом, а абзац внутри неё зелёным:
 
 ```kotlin
 documentView {
@@ -872,7 +943,7 @@ documentView {
 
 <img src="docs/screenshot_15_1.png" width=704>
 
-На правом изображении, чтобы разобраться в "магии" схлопывания, полупрозрачным цветом выделено пространство внешних отступов. Видно, что отступы абзаца "входят" в отступ секции.
+На правом изображении, чтобы разобраться в "магии" схлопывания, полупрозрачным цветом выделено пространство внешних отступов. Видно, что отступы абзаца "входят" в отступ раздела.
 
 В случае, если отступ потомка больше, чем отступ родителя, то сверху отступ потомка "входит" в отступ родителя только частично, а снизу выбирается максимальный отступ:
 
@@ -914,17 +985,17 @@ documentView {
 }
 ```
 
-Случай, когда отступ у секции 1 см, а у абзаца 5 мм:
+Случай, когда отступ у раздела 1 см, а у абзаца 5 мм:
 
 <img src="docs/screenshot_15_3.png" width=704>
 
-Случай, когда отступ у секции 5 мм, а у абзаца 1 см:
+Случай, когда отступ у раздела 5 мм, а у абзаца 1 см:
 
 <img src="docs/screenshot_15_4.png" width=704>
 
-Сколько бы потомков не было, все их отступы схлопываются в один. В следующем примере две вложенных секции (красная и синяя) и один абзац, вложенный в последнюю (зелёный). Отступ у всех 5 мм.
+Сколько бы потомков не было, все их отступы схлопываются в один. В следующем примере два вложенных раздела (красная и синяя) и один абзац, вложенный в последнюю (зелёный). Отступ у всех 5 мм.
 
-Отступ у абзаца может задаваться как у секции через `borderStyle`, но в этом случае каждый абзац настраивается отдельно - `borderStyle` не передаётся потомкам. А можно использовать свойства `spaceBefore` и `spaceAfter` в `paragraphStyle`. Стиль абзацев передаётся потомкам, и в этом случае можно настроить отступы сразу всех абзацев документа или секции:
+Отступ у абзаца может задаваться как у раздела через `borderStyle`, но в этом случае каждый абзац настраивается отдельно - `borderStyle` не передаётся потомкам. А можно использовать свойства `spaceBefore` и `spaceAfter` в `paragraphStyle`. Стиль абзацев передаётся потомкам, и в этом случае можно настроить отступы сразу всех абзацев документа или раздела:
 
 ```kotlin
 documentView {
@@ -961,7 +1032,7 @@ documentView {
 
 <img src="docs/screenshot_16_1.png" width=704>
 
-Если у красной секции задать рамку, то она перестанет участвовать в схлопывании:
+Если у красного раздела задать рамку, то она перестанет участвовать в схлопывании:
 
 ```kotlin
 documentView {
@@ -979,7 +1050,7 @@ documentView {
 
 <img src="docs/screenshot_16_2.png" width=704>
 
-Если исключить и синюю секцию, то каждый останется со своим отступом:
+Если исключить и синий раздел, то каждый останется со своим отступом:
 
 ```kotlin
 documentView {
@@ -1005,13 +1076,13 @@ documentView {
 
 <img src="docs/screenshot_16_3.png" width=704>
 
-Отступы следующего набора секций также схлопываются с отступами предыдущего, как и в первом примере с абзацами:
+Отступы следующего набора разделов также схлопываются с отступами предыдущего, как и в первом примере с абзацами:
 
 <img src="docs/screenshot_17.png" width=704>
 
 ### Лишние отступы сверху и снизу
 
-Обычно отступы нужны для отделения абзацев друг от друга, но в начале и конце документа или секции они могут быть неуместны. В этом случае их можно убрать с помощью `ignoreFirstMargin` и `ignoreLastMargin`. Первый пример из раздела о схлопывании:
+Обычно отступы нужны для отделения абзацев друг от друга, но в начале и конце документа или раздела они могут быть неуместны. В этом случае их можно убрать с помощью `ignoreFirstMargin` и `ignoreLastMargin`. Первый пример из раздела о схлопывании:
 
 ```kotlin
 documentView {
