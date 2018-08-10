@@ -2,37 +2,28 @@ package ru.vik.documentview
 
 import android.graphics.Paint
 import android.graphics.Typeface
+import ru.vik.utils.font.Font
+import ru.vik.utils.font.FontFamily
 
-class Font(
-    var typeface: Typeface,
-    var hyphen: Char = '-',
-    var scale: Float = 1.0f,
-    var ascentRatio: Float? = null,
-    var descentRatio: Float? = null
-) {
-    var weight = 400
-    var isItalic = false
-
-    constructor(font: Font,
-        typeface: Typeface = font.typeface,
-        hyphen: Char = font.hyphen,
-        scale: Float = font.scale,
-        ascentRatio: Float? = font.ascentRatio,
-        descentRatio: Float? = font.descentRatio
-    ) : this(typeface, hyphen, scale, ascentRatio, descentRatio)
-
-    operator fun invoke(init: Font.() -> Unit): Font {
-        this.init()
-        return this
+var Font.typeface: Typeface
+    get() = this.abstractTypeface as? Typeface ?: Typeface.DEFAULT
+    set(value) {
+        this.abstractTypeface = value
     }
 
-    fun correctFontMetrics(fontMetrics: Paint.FontMetrics): Paint.FontMetrics {
-        this.ascentRatio?.let { fontMetrics.ascent = fontMetrics.top * it }
-        this.descentRatio?.let { fontMetrics.descent = fontMetrics.bottom * it }
-        return fontMetrics
-    }
+fun Font.correctFontMetrics(fontMetrics: Paint.FontMetrics): Paint.FontMetrics {
+    this.ascentRatio?.let { fontMetrics.ascent = fontMetrics.top * it }
+    this.descentRatio?.let { fontMetrics.descent = fontMetrics.bottom * it }
+    return fontMetrics
+}
 
-//    fun clone(typeface: Typeface): Font {
-//        return Font(typeface, this.hyphen, this.scale, this.ascentRatio, this.descentRatio)
-//    }
+/**
+ * Создание семейства шрифтов: normal, bold, italic, bold_italic. Актуально только
+ * для встроенных шрифтов
+ */
+infix fun FontFamily.from(font: Font) {
+    this[Font.NORMAL, false] = font
+    this[Font.BOLD, false] = Font(font, Typeface.create(font.typeface, Typeface.BOLD))
+    this[Font.NORMAL, true] = Font(font, Typeface.create(font.typeface, Typeface.ITALIC))
+    this[Font.BOLD, true] = Font(font, Typeface.create(font.typeface, Typeface.BOLD_ITALIC))
 }

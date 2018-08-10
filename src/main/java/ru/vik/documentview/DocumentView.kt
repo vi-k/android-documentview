@@ -12,6 +12,8 @@ import java.util.logging.Logger
 import ru.vik.utils.parser.StringParser
 import ru.vik.utils.color.mix
 import ru.vik.utils.document.*
+import ru.vik.utils.font.Font
+import ru.vik.utils.font.FontList
 import kotlin.math.*
 
 open class DocumentView(context: Context,
@@ -22,8 +24,6 @@ open class DocumentView(context: Context,
     constructor(context: Context) : this(context, null, 0)
 
     enum class Baseline { NONE, CHARACTERS, INDENT, PARAGRAPH, SECTION, VIEW }
-
-    enum class GetFontType { BY_FULL_NAME, BY_SHORT_NAME, DEFAULT }
 
     class Segment(
         var isFirst: Boolean,
@@ -787,11 +787,16 @@ open class DocumentView(context: Context,
         textPaint.reset()
         textPaint.isAntiAlias = true
 
-        val (font, getFontType) = getFont(characterStyle)
+        val font = getFont(characterStyle)
 
-        if (getFontType != GetFontType.BY_FULL_NAME) {
-            characterStyle.bold?.also { textPaint.isFakeBoldText = it }
-            characterStyle.italic?.also { textPaint.textSkewX = if (it) -0.18f else 0f }
+        // Фейковый italic, если нет нужного шрифта
+        if (!font.isItalic && (characterStyle.italic || characterStyle.oblique)) {
+            textPaint.textSkewX = -0.18f
+        }
+
+        // Фейковый bold, если нет нужного шрифта
+        if ((characterStyle.weight ?: Font.NORMAL) - font.weight >= Font.BOLD - Font.NORMAL) {
+            textPaint.isFakeBoldText = true
         }
 
         textPaint.typeface = font.typeface
@@ -927,51 +932,25 @@ open class DocumentView(context: Context,
     }
 
     /**
-     * Полное название шрифта в зависимости от параметров bold и italic в characterStyle.
-     *
-     * @return
-     * 1) Если bold=false, italic=false, то "название_шрифта"
-     * 2) Если bold=true, italic=false, то "название_шрифта:bold"
-     * 3) Если bold=false, italic=true, то "название_шрифта:italic"
-     * 4) Если bold=true, italic=true, то "название_шрифта:bold_italic"
-     */
-    private fun getFontFullName(characterStyle: CharacterStyle): String {
-        var fontName = characterStyle.font ?: ""
-        if (characterStyle.bold == true) {
-            fontName += if (characterStyle.italic == true) ":bold_italic" else ":bold"
-        } else if (characterStyle.italic == true) {
-            fontName += ":italic"
-        }
-
-        return fontName
-    }
-
-    /**
      * Поиск необходимого шрифта, заданного в characterStyle, в списке шрифтов.
      *
      * @return
      * 1) Если шрифт найден по полному имени с учётом bold и italic, то найденный шрифт
-     * с параметром GetFontType.BY_FULL_NAME.
+     * с параметром GetFont.BY_FULL_NAME.
      * 2) Если шрифт найден только по короткому имени, то найденный шрифт
-     * с параметром GetFontType.BY_SHORT_NAME.
-     * 3) Если шрифт не найден, то шрифт по-умолчанию с параметром GetFontType.DEFAULT.
+     * с параметром GetFont.BY_SHORT_NAME.
+     * 3) Если шрифт не найден, то шрифт по-умолчанию с параметром GetFont.DEFAULT.
      */
-    private fun getFont(characterStyle: CharacterStyle): Pair<Font, GetFontType> {
-        var getFontType = GetFontType.BY_FULL_NAME
-        var font = this.fontList[getFontFullName(characterStyle)]
-
-        if (font == null) {
-            getFontType = GetFontType.BY_SHORT_NAME
-            font = characterStyle.font?.let { this.fontList[it] }
-
-            if (font == null) {
-                getFontType = GetFontType.DEFAULT
-                font = Font(Typeface.DEFAULT)
+    private fun getFont(characterStyle: CharacterStyle): Font {
+        characterStyle.font?.also { name ->
+            characterStyle.weight?.also { weight ->
+                this.fontList.getNear(name, weight, characterStyle.italic)?.also {
+                    return it
+                }
             }
         }
 
-
-        return Pair(font, getFontType)
+        return Font(Typeface.DEFAULT)
     }
 
     /**
