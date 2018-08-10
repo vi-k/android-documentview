@@ -304,7 +304,7 @@ font("serif2", isBold = true, isItalic = true) to Font(Typeface.create(Typeface.
 
 ### Насыщенность (`weight`)
 
-`DocumentView` поддерживает шрифты с различной насыщенностью (`weight`), не только нормального и полужирного начертаний (`bold`):
+`DocumentView` поддерживает шрифты с различной насыщенностью (`weight`), не только нормального и полужирного (`bold`):
 
 ```kotlin
 documentView {
