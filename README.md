@@ -331,6 +331,12 @@ documentView {
             Lorem ipsum dolor sit amet ...
             Lorem ipsum dolor sit amet ...
             Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
         """.trimIndent()
 
         borderStyle {
@@ -345,24 +351,26 @@ documentView {
 
         paragraph { index ->
             characterStyle {
-                weight = when (index) {
-                    0, 6 -> Font.THIN
-                    1, 7 -> 250
-                    2, 8 -> Font.NORMAL
-                    3, 9 -> 550
-                    4, 10 -> Font.BOLD
-                    5, 11 -> Font.BLACK
+                weight = when (index % 6){
+                    0 -> Font.THIN
+                    1 -> 250
+                    2 -> Font.NORMAL
+                    3 -> 550
+                    4 -> Font.BOLD
+                    5 -> Font.BLACK
                     else -> Font.NORMAL
                 }
-                italic = index in 0..5
+                if (index in 6..12) italic = true
+                if (index in 13..18) oblique = true
             }
         }
-
     }
 }
 ```
 
 <img src="docs/screenshot_4_3.png" width=351>
+
+Последние шесть строк с искусственным курсивом, загруженные шрифты с курсивом не используются.
 
 Если проект использует несколько `DocumentView`, то удобнее создать один список шрифтов и использовать его для всех создаваемых виджетов:
 
