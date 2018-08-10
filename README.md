@@ -13,7 +13,7 @@
 - [Простой пример](#Простой-пример)
 - [Абзацы](#Абзацы)
 - [Шрифты](#Шрифты)
-    - [Поддержка насыщенности (`weight`)](#Поддержка-насыщенности-weight)
+    - [Насыщенность (`weight`)](#Насыщенность-weight)
     - [Коррекция шрифтов](#Коррекция-шрифтов)
     - [Общий список шрифтов](#Общий-список-шрифтов)
 - [Рамки](#Рамки)
@@ -302,9 +302,9 @@ font("serif2", isBold = true, isItalic = true) to Font(Typeface.create(Typeface.
 
 <img src="docs/screenshot_4_2.png" width=351>
 
-### Поддержка насыщенности (`weight`)
+### Насыщенность (`weight`)
 
-`DocumentView` поддерживает шрифты с различной насыщенностью (`weight`), не только нормального и полужирного начертаний (`bold`):
+`DocumentView` поддерживает шрифты с различной насыщенностью (`weight`), не только нормального и полужирного (`bold`):
 
 ```kotlin
 documentView {
@@ -368,9 +368,51 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_4_3.png" width=351>
+<img src="docs/screenshot_5.png" width=351>
 
 У последних шести строк установлен искусственный курсив (`oblique`), для которого используется обычный, не наклонный шрифт. Если наклонный шрифт не будет загружен, то искуственный курсив будет использоваться и для `oblique`, и для `italic`.
+
+### Коррекция шрифтов
+
+При совместном использовании нескольких шрифтов может возникнуть проблема соотношения реальных размеров знаков для одного и того же кегля:
+
+```kotlin
+documentView {
+    fontList {
+        family("serif") from Font(Typeface.SERIF)
+        font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!)
+    }
+
+    document {
+        text = "В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ"
+
+        span to word(4) style { font = "serif" }
+        span from word(5) style { font = "ponomar" }
+    }
+}
+```
+
+<img src="docs/screenshot_6_1.png" width=351>
+
+Можно, конечно, в каждом случае вручную приводить нужный текст к требуемому размеру, а можно скорректировать весь шрифт ещё на этапе его загрузки, задав ему масштаб:
+
+```kotlin
+font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+        scale = 1.2f)
+```
+
+<img src="docs/screenshot_6_2.png" width=351>
+
+Следующей проблемой может оказаться, как в данном случае, слишком большое или слишком маленькое расстояние между строками *(старославянский шрифт требует больше места из-за обилия в языке диакритических знаков)*. Это тоже можно исправить, указав нужные коэффициенты для коррекции верхнего (`ascent`) и нижнего (`descent`) отступов шрифта:
+
+```kotlin
+font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+        scale = 1.2f, ascentRatio = 0.8f, descentRatio = 0.8f)
+```
+
+<img src="docs/screenshot_6_3.png" width=351>
+
+Это может оказаться удобным, когда приходится работать с нестандартными или недоведёнными до ума шрифтами.
 
 ### Общий список шрифтов
 
@@ -400,49 +442,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_5.png" width=351>
-
-### Коррекция шрифтов
-
-При совместном использовании нескольких шрифтов может возникнуть проблема соотношения реальных размеров знаков для одного и того же кегля:
-
-```kotlin
-documentView {
-    fontList {
-        family("serif") from Font(Typeface.SERIF)
-        font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!)
-    }
-
-    document {
-        text = "В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ"
-
-        span to word(4) style { font = "serif" }
-        span from word(5) style { font = "ponomar" }
-    }
-}
-```
-
-<img src="docs/screenshot_9_1.png" width=351>
-
-Можно, конечно, в каждом случае вручную приводить нужный текст к требуемому размеру, а можно скорректировать весь шрифт ещё на этапе его загрузки, задав ему масштаб:
-
-```kotlin
-font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
-        scale = 1.2f)
-```
-
-<img src="docs/screenshot_9_2.png" width=351>
-
-Следующей проблемой может оказаться, как в данном случае, слишком большое или слишком маленькое расстояние между строками *(старославянский шрифт требует больше места из-за обилия в языке диакритических знаков)*. Это тоже можно исправить, указав нужные коэффициенты для коррекции верхнего (`ascent`) и нижнего (`descent`) отступов шрифта:
-
-```kotlin
-font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
-        scale = 1.2f, ascentRatio = 0.8f, descentRatio = 0.8f)
-```
-
-<img src="docs/screenshot_9_3.png" width=351>
-
-Это может оказаться удобным, когда приходится работать с нестандартными или недоведёнными до ума шрифтами.
+<img src="docs/screenshot_7.png" width=351>
 
 ## Рамки
 
@@ -475,7 +475,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_6_1.png" width=351>
+<img src="docs/screenshot_8_1.png" width=351>
 
 В примере используется класс `Color` из модуля для работы с цветом [color]. Это не `android.graphics.Color`, хотя можно использовать и его. И в том, и в другом случае цвет хранится в обычном `Int`.
 
@@ -520,7 +520,7 @@ paragraph(2) {
 }
 ```
 
-<img src="docs/screenshot_6_2.png" width=351>
+<img src="docs/screenshot_8_2.png" width=351>
 
 Поддержка разноцветных рамок сделана для согласования с HTML. Но на данном этапе рамки рисуются **попиксельно вручную**, т.к. пока не нашлось адекватного уже существующего метода с аппаратной поддержкой, чтобы сделать плавные переходы между цветами с учётом сглаживания (antialias) и прозрачности цветов: `drawPath()` работает только с одним цветом, `drawVertices()` работает только в режиме SOFTWARE и не умеет сглаживать линии. Собственный же метод умеет и сглаживать рамки (antialias), и более менее адекватно смешивать цвета (см. в [`Color`][color] функцию `mix()`). Но он значительно увеличивает время прорисовки виджета при толстых рамках. В будущем, видимо, придётся пойти на компромиссы и от чего-то отказаться ради увеличения скорости, если, конечно, не удастся найти что-то адекватное. (Не очень хочется переходить ради одних только рамок на OpenGL, хотя...)
 
@@ -592,7 +592,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_7.png" width=351>
+<img src="docs/screenshot_9.png" width=351>
 
 Пример оформления стихотворения:
 
@@ -626,7 +626,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_8.png" width=351>
+<img src="docs/screenshot_10.png" width=351>
 
 Заодно в этом примере используется Unicode-символ `'\u2028'`. Это разрыв строки, но без разделения текста на абзацы. Для разделения на абзацы используются `'\r'`, `'\n'`, `'\r\n'` и `'\u2029'`
 
@@ -646,7 +646,7 @@ text = """
 }
 ```
 
-<img src="docs/screenshot_10.png" width=351>
+<img src="docs/screenshot_11.png" width=351>
 
 В некоторых языках (например, в старославянском) используется символ переноса, отличный от стандартного. Изменить это можно при загрузке шрифта:
 
@@ -680,7 +680,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_11.png" width=351>
+<img src="docs/screenshot_12.png" width=351>
 
 ## Базовые линии
 
@@ -688,7 +688,7 @@ documentView {
 
 ```kotlin
 documentView {
-    baselineMode = DocumentView.Baseline.PARAGRAPH
+    baselineMode = DocumentView.Baseline.SECTION
     document {
         text = "Lo~rem ip~sum do~lor sit amet, con~sec~te~tur adi~pis~cing elit, sed do eius~mod tem~por in~ci~di~dunt ut la~bo~re et do~lo~re mag~na ali~qua."
                 .replace('~', '\u00AD')
@@ -696,7 +696,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_12.png" width=351>
+<img src="docs/screenshot_13.png" width=351>
 
 ### Смещение относительно базовой линии (`baselineShift`)
 
@@ -704,7 +704,7 @@ documentView {
 
 ```kotlin
 documentView {
-    baselineMode = DocumentView.Baseline.VIEW
+    baselineMode = DocumentView.Baseline.SECTION
     baselineColor = Color.rgb(0x4B77BE)
 
     document {
@@ -745,7 +745,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_13_1.png" width=351>
+<img src="docs/screenshot_14_1.png" width=351>
 
 ### Выравнивание по вертикали внутри строки (`verticalAlign`)
 
@@ -771,7 +771,7 @@ paragraph(3) {
 }
 ```
 
-<img src="docs/screenshot_13_2.png" width=351>
+<img src="docs/screenshot_14_2.png" width=351>
 
 Для верхнего индекса получилось очень хорошо, зато нижний индекс поднялся слишком высоко. И такой компромисс может нас не устроить. Есть способ опустить ниже, не заботясь о ручном вычислении смещения: значение `VAlign.BOTTOM` служит для выравнивания нижней границы символа по нижней границе базового шрифта, а значение `VAlign.BASELINE_TO_BOTTOM` выравнивает базовую линию символа по границе базового шрифта. Но, разумеется, расстояние между строками после этого снова увеличится:
 
@@ -784,7 +784,7 @@ paragraph(2) {
 }
 ```
 
-<img src="docs/screenshot_13_3.png" width=351>
+<img src="docs/screenshot_14_3.png" width=351>
 
 ### Интерлиньяж, или межстрочный интервал (`leading`)
 
@@ -807,7 +807,7 @@ paragraph(2) {
 }
 ```
 
-<img src="docs/screenshot_13_4.png" width=351>
+<img src="docs/screenshot_14_4.png" width=351>
 
 Только бы не оказалось так, что в строке не окажется ни одного символа с ненулевым размером! Строки слипнутся! Избежать этого можно, установив интерлиньяж равным высоте базового шрифта через `Size.ratio()`. Если в абзацных отступах `ratio` это доля от ширины родительского раздела, в шрифтах - доля от кегля базового шрифта (тоже самое, что `em`), то при вычислении интерлиньяжа `ratio` это доля от высоты (не кегля!) базового (а не текущего!) шрифта (`em` и `fh` вычисляются от размера текущего шрифта):
 
@@ -840,7 +840,7 @@ document {
 }
 ```
 
-<img src="docs/screenshot_13_5.png" width=351>
+<img src="docs/screenshot_14_5.png" width=351>
 
 `fh` - это единицы измерения относительно высота шрифта (`ascent` + `descent`). При одинаковом кегле высота разных шрифтов различается. Использовать `em`, как это приходится делать в HTML, в данном случае очень не удобно, так как кегль только условно связан с межстрочными интервалами, принятыми в текстовых редакторах.
 
@@ -859,7 +859,7 @@ paragraph(0) {
 }
 ```
 
-<img src="docs/screenshot_13_6.png" width=704>
+<img src="docs/screenshot_14_6.png" width=704>
 
 Интерлиньяж `leading = Size.ratio(1f)` для первой строки не работает! Но есть решение и у этой "проблемы". Можно принудительно установить первую базовую строку на самый верх документа. Тогда первая строка текста перестанет "считать" себя первой:
 
@@ -870,7 +870,7 @@ document {
 }
 ```
 
-<img src="docs/screenshot_13_7.png" width=704>
+<img src="docs/screenshot_14_7.png" width=704>
 
 В этом примере первая (пустая) строка проходит по верхней кромке документа, вторая строка (наша первая строка) вычисляется относительно её, и мы получим ожидаемую синхронизацию.
 
@@ -880,7 +880,7 @@ document {
 
 ## Схлопывание отступов (`marginCollapsing`)
 
-По-умолчанию, вертикальные внешние отступы (`margin`) абзацев и разделов соединяются (схлопываются) в один, равный максимальному (а не суммируются):
+По-умолчанию, вертикальные внешние отступы (`margin`) абзацев и разделов соединяются (схлопываются) в один, равный максимальному, т.е. они не суммируются:
 
 ```kotlin
 documentView {
@@ -904,7 +904,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_14_1.png" width=351>
+<img src="docs/screenshot_15_1.png" width=351>
 
 (Отступ между абзацами равен 5 мм. Это может не соответствовать действительности на мониторе, но на телефоне, если в нём правильно настроены параметры экрана (`xdpi` и `ydpi`), это будут ровно 5 мм.)
 
@@ -920,7 +920,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_14_2.png" width=351>
+<img src="docs/screenshot_15_2.png" width=351>
 
 ### Родители и потомки
 
@@ -951,7 +951,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_15_1.png" width=704>
+<img src="docs/screenshot_16_1.png" width=704>
 
 На правом изображении, чтобы разобраться в "магии" схлопывания, полупрозрачным цветом выделено пространство внешних отступов. Видно, что отступы абзаца "входят" в отступ раздела.
 
@@ -977,7 +977,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_15_2.png" width=704>
+<img src="docs/screenshot_16_2.png" width=704>
 
 Но если у родителя есть рамка (`border`) или внутренний отступ (`padding`), то схлопывание отключается, т.к. рамка устанавливает границы, которые нельзя "перейти":
 
@@ -997,11 +997,11 @@ documentView {
 
 Случай, когда отступ у раздела 1 см, а у абзаца 5 мм:
 
-<img src="docs/screenshot_15_3.png" width=704>
+<img src="docs/screenshot_16_3.png" width=704>
 
 Случай, когда отступ у раздела 5 мм, а у абзаца 1 см:
 
-<img src="docs/screenshot_15_4.png" width=704>
+<img src="docs/screenshot_16_4.png" width=704>
 
 Сколько бы потомков не было, все их отступы схлопываются в один. В следующем примере два вложенных раздела (красная и синяя) и один абзац, вложенный в последнюю (зелёный). Отступ у всех 5 мм.
 
@@ -1040,7 +1040,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_16_1.png" width=704>
+<img src="docs/screenshot_17_1.png" width=704>
 
 Если у красного раздела задать рамку, то она перестанет участвовать в схлопывании:
 
@@ -1058,7 +1058,7 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_16_2.png" width=704>
+<img src="docs/screenshot_17_2.png" width=704>
 
 Если исключить и синий раздел, то каждый останется со своим отступом:
 
@@ -1084,11 +1084,11 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_16_3.png" width=704>
+<img src="docs/screenshot_17_3.png" width=704>
 
 Отступы следующего набора разделов также схлопываются с отступами предыдущего, как и в первом примере с абзацами:
 
-<img src="docs/screenshot_17.png" width=704>
+<img src="docs/screenshot_18.png" width=704>
 
 ### Лишние отступы сверху и снизу
 
@@ -1104,4 +1104,4 @@ documentView {
 }
 ```
 
-<img src="docs/screenshot_14_3.png" width=351>
+<img src="docs/screenshot_15_3.png" width=351>
