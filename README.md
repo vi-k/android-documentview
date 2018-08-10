@@ -216,9 +216,9 @@ documentView {
     document {
         ...
         fontList {
-            "sans_serif" family Font(Typeface.SANS_SERIF)
-            "serif" family Font(Typeface.SERIF)
-            "mono" family Font(Typeface.MONOSPACE)
+            family("sans_serif") from Font(Typeface.SANS_SERIF)
+            family("serif") from Font(Typeface.SERIF)
+            family("mono") from Font(Typeface.MONOSPACE)
         }
 
         paragraph {
@@ -248,13 +248,17 @@ documentView {
 
 <img src="docs/screenshot_3_3.png" width=351>
 
-С помощью DSL-конструкции `"name" family Font(...)` (или функции `createFamily()`) создаётся сразу 4 шрифта для разных начертаний: нормального, **полужирного**, *курсива* и ***полужирного вместе с курсивом***. Но это возможно только для встроенных шрифтов. Для пользовательских шрифтов все файлы с начертаниями необходимо загрузить отдельно. Если этого не сделать, соответствующий шрифт будет при необходимости генерироваться автоматически. Но специально приготовленные шрифты могут существенно отличаться от генерируемых:
+С помощью DSL-конструкции `family("name") from Font(...)` создаётся сразу 4 шрифта для разных начертаний: нормального, **полужирного**, *курсива* и ***полужирного вместе с курсивом***. Но это возможно только для встроенных шрифтов. Для пользовательских шрифтов все файлы с начертаниями необходимо загрузить отдельно. Если этого не сделать, соответствующий шрифт будет при необходимости генерироваться автоматически. Но специально приготовленные шрифты могут существенно отличаться от генерируемых:
 
 ```kotlin
 documentView {
     fontList {
-        "serif1" family Font(Typeface.SERIF)
-        "serif2" to Font(Typeface.SERIF)
+        family("serif1") from Font(Typeface.SERIF)
+        font("serif2") to Font(Typeface.SERIF)
+        // Или другой вариант:
+        // font("serif2") {
+        //     typeface = Typeface.SERIF
+        // }
     }
 
     document {
@@ -282,26 +286,92 @@ documentView {
 
 <img src="docs/screenshot_4_1.png" width=351>
 
-DSL-конструкция `"name" to Font(...)` (или обращение к списку по индексу: `fontList["name"]`) добавляет только один, указанный, шрифт.
+DSL-конструкция `font("name") to Font(...)` добавляет только один, указанный, шрифт.
 
-Чтобы `DocumentView` в нужные моменты мог задействовать нужные шрифты, при создании шрифта к основному названию надо добавить соответствующий постфикс: `:bold`, `:italic`, `:bold_italic`
+Чтобы `DocumentView` при форматировании текста с различным начертанием мог задействовать нужные шрифты, надо загрузить их, указав в функции `font()` параметры шрифта: `isBold` и `isItalic`:
 
 ```kotlin
-"serif2:bold" to Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
-"serif2:italic" to Font(Typeface.create(Typeface.SERIF, Typeface.ITALIC))
-"serif2:bold_italic" to Font(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC))
+font("serif2", isBold = true) to Font(Typeface.create(Typeface.SERIF, Typeface.BOLD))
+font("serif2", isItalic = true) to Font(Typeface.create(Typeface.SERIF, Typeface.ITALIC))
+font("serif2", isBold = true, isItalic = true) to Font(Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC))
 ```
 
 <img src="docs/screenshot_4_2.png" width=351>
+
+`DocumentView` поддерживает шрифты с различным `weight`, не только `bold`:
+
+```kotlin
+documentView {
+    fontList {
+        font("segoeui", weight = 100) to Font(Typeface.createFromAsset(assets, "fonts/segoeuil.ttf")!!)
+        font("segoeui", weight = 100, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/seguili.ttf")!!)
+        font("segoeui", weight = 250) to Font(Typeface.createFromAsset(assets, "fonts/segoeuisl.ttf")!!)
+        font("segoeui", weight = 250, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/seguisli.ttf")!!)
+        font("segoeui", weight = 400) to Font(Typeface.createFromAsset(assets, "fonts/segoeui.ttf")!!)
+        font("segoeui", weight = 400, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/segoeuii.ttf")!!)
+        font("segoeui", weight = 550) to Font(Typeface.createFromAsset(assets, "fonts/seguisb.ttf")!!)
+        font("segoeui", weight = 550, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/seguisbi.ttf")!!)
+        font("segoeui", weight = 700) to Font(Typeface.createFromAsset(assets, "fonts/segoeuib.ttf")!!)
+        font("segoeui", weight = 700, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/segoeuiz.ttf")!!)
+        font("segoeui", weight = 900) to Font(Typeface.createFromAsset(assets, "fonts/seguibl.ttf")!!)
+        font("segoeui", weight = 900, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/seguibli.ttf")!!)
+    }
+
+    document {
+        text = """
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+            Lorem ipsum dolor sit amet ...
+        """.trimIndent()
+
+        borderStyle {
+            padding = Size.dp(8f)
+            border = Border.px(1f, Color.BLACK)
+            margin = Size.dp(4f)
+        }
+
+        characterStyle {
+            font = "segoeui"
+        }
+
+        paragraph { index ->
+            characterStyle {
+                weight = when (index) {
+                    0, 6 -> Font.THIN
+                    1, 7 -> 250
+                    2, 8 -> Font.NORMAL
+                    3, 9 -> 550
+                    4, 10 -> Font.BOLD
+                    5, 11 -> Font.BLACK
+                    else -> Font.NORMAL
+                }
+                italic = index in 0..5
+            }
+        }
+
+    }
+}
+```
+
+<img src="docs/screenshot_4_3.png" width=351>
 
 Если проект использует несколько `DocumentView`, то удобнее создать один список шрифтов и использовать его для всех создаваемых виджетов:
 
 ```kotlin
 val commonFontList = FontList {
-    "georgia" to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
-    "georgia:bold" to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
-    "georgia:italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiai.ttf")!!)
-    "georgia:bold_italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
+    font("georgia") to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
+    font("georgia", isBold = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
+    font("georgia", isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiai.ttf")!!)
+    font("georgia", isBold = true, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
 }
 
 documentView {
@@ -477,10 +547,10 @@ documentView {
 ```kotlin
 documentView {
     fontList {
-        "georgia" to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
-        "georgia:bold" to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
-        "georgia:italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiai.ttf")!!)
-        "georgia:bold_italic" to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
+        font("georgia") to Font(Typeface.createFromAsset(assets, "fonts/georgia.ttf")!!)
+        font("georgia", isBold = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiab.ttf")!!)
+        font("georgia", isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiai.ttf")!!)
+        font("georgia", isBold = true, isItalic = true) to Font(Typeface.createFromAsset(assets, "fonts/georgiaz.ttf")!!)
     }
 
     document {
@@ -515,8 +585,8 @@ documentView {
 ```kotlin
 documentView {
     fontList {
-        "serif" family Font(Typeface.SERIF)
-        "ponomar" to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!)
+        family("serif") from Font(Typeface.SERIF)
+        font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!)
     }
 
     document {
@@ -533,7 +603,7 @@ documentView {
 Можно, конечно, в каждом случае вручную приводить нужный текст к требуемому размеру, а можно скорректировать весь шрифт ещё на этапе его загрузки, задав ему масштаб:
 
 ```kotlin
-"ponomar" to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
         scale = 1.2f)
 ```
 
@@ -542,7 +612,7 @@ documentView {
 Следующей проблемой может оказаться, как в данном случае, слишком большое или слишком маленькое расстояние между строками *(старославянский шрифт требует больше места из-за обилия в языке диакритических знаков)*. Это тоже можно исправить, указав нужные коэффициенты для коррекции верхнего (`ascent`) и нижнего (`descent`) отступов шрифта:
 
 ```kotlin
-"ponomar" to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
         scale = 1.2f, ascentRatio = 0.8f, descentRatio = 0.8f)
 ```
 
@@ -573,12 +643,13 @@ text = """
 ```kotlin
 documentView {
     fontList {
-        "ponomar" to Font(
-                typeface = Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
-                hyphen = '_', // Символ переноса для старославянского языка
-                ascentRatio = 0.9f,
-                descentRatio = 0.9f,
-                scale = 1.2f)
+        font("ponomar") {
+            typeface = Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!
+            hyphen = '_' // Символ переноса для старославянского языка
+            ascentRatio = 0.9f
+            descentRatio = 0.9f
+            scale = 1.2f
+        }
     }
 
     document {
