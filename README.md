@@ -351,17 +351,17 @@ documentView {
 
         paragraph { index ->
             characterStyle {
-                weight = when (index % 6){
-                    0 -> Font.THIN
+                weight = when (index % 6) {
+                    0 -> Font.THIN   // 100
                     1 -> 250
-                    2 -> Font.NORMAL
+                    2 -> Font.NORMAL // 400
                     3 -> 550
-                    4 -> Font.BOLD
-                    5 -> Font.BLACK
+                    4 -> Font.BOLD   // 700
+                    5 -> Font.BLACK  // 900
                     else -> Font.NORMAL
                 }
-                if (index in 6..12) italic = true
-                if (index in 13..18) oblique = true
+                if (index in 6..11) italic = true
+                if (index in 12..17) oblique = true
             }
         }
     }
