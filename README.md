@@ -13,9 +13,11 @@
 - [Простой пример](#Простой-пример)
 - [Абзацы](#Абзацы)
 - [Шрифты](#Шрифты)
+    - [Поддержка насыщенности (`weight`)](#Поддержка-насыщенности-weight)
+    - [Коррекция шрифтов](#Коррекция-шрифтов)
+    - [Общий список шрифтов](#Общий-список-шрифтов)
 - [Рамки](#Рамки)
 - [Оформление абзацев](#Оформление-абзацев)
-- [Коррекция шрифтов](#Коррекция-шрифтов)
 - [Переносы слов](#Переносы-слов)
 - [Базовые линии](#Базовые-линии)
     - [Смещение относительно базовой линии (`baselineShift`)](#Смещение-относительно-базовой-линии-baselineshift)
@@ -255,10 +257,6 @@ documentView {
     fontList {
         family("serif1") from Font(Typeface.SERIF)
         font("serif2") to Font(Typeface.SERIF)
-        // Или другой вариант:
-        // font("serif2") {
-        //     typeface = Typeface.SERIF
-        // }
     }
 
     document {
@@ -286,7 +284,13 @@ documentView {
 
 <img src="docs/screenshot_4_1.png" width=351>
 
-DSL-конструкция `font("name") to Font(...)` добавляет только один, указанный, шрифт.
+DSL-конструкция `font("name") to Font(...)` добавляет только один, указанный, шрифт. Эту конструкцию можно использовать в другим варианте:
+
+```kotlin
+font("serif2") {
+    typeface = Typeface.SERIF
+}
+```
 
 Чтобы `DocumentView` при форматировании текста с различным начертанием мог задействовать нужные шрифты, надо загрузить их, указав в функции `font()` параметры шрифта: `isBold` и `isItalic`:
 
@@ -298,7 +302,9 @@ font("serif2", isBold = true, isItalic = true) to Font(Typeface.create(Typeface.
 
 <img src="docs/screenshot_4_2.png" width=351>
 
-`DocumentView` поддерживает шрифты с различным `weight`, не только `bold`:
+### Поддержка насыщенности (`weight`)
+
+`DocumentView` поддерживает шрифты с различной насыщенностью (`weight`), не только нормального и полужирного начертаний (`bold`):
 
 ```kotlin
 documentView {
@@ -339,29 +345,23 @@ documentView {
             Lorem ipsum dolor sit amet ...
         """.trimIndent()
 
-        borderStyle {
-            padding = Size.dp(8f)
-            border = Border.px(1f, Color.BLACK)
-            margin = Size.dp(4f)
-        }
-
         characterStyle {
             font = "segoeui"
         }
 
         paragraph { index ->
             characterStyle {
-                weight = when (index % 6){
-                    0 -> Font.THIN
+                weight = when (index % 6) {
+                    0 -> Font.THIN   // 100
                     1 -> 250
-                    2 -> Font.NORMAL
+                    2 -> Font.NORMAL // 400
                     3 -> 550
-                    4 -> Font.BOLD
-                    5 -> Font.BLACK
+                    4 -> Font.BOLD   // 700
+                    5 -> Font.BLACK  // 900
                     else -> Font.NORMAL
                 }
-                if (index in 6..12) italic = true
-                if (index in 13..18) oblique = true
+                if (index in 6..11) italic = true
+                else if (index in 12..17) oblique = true
             }
         }
     }
@@ -370,9 +370,11 @@ documentView {
 
 <img src="docs/screenshot_4_3.png" width=351>
 
-У последние шесть строк искусственный курсив (`oblique`), загруженные шрифты с курсивом не используются.
+У последних шести строк установлен искусственный курсив (`oblique`), для которого используется обычный, не наклонный шрифт. Если наклонный шрифт не будет загружен, то искуственный курсив будет использоваться и для `oblique`, и для `italic`.
 
-Если проект использует несколько `DocumentView`, то удобнее создать один список шрифтов и использовать его для всех создаваемых виджетов:
+### Общий список шрифтов
+
+Когда проект использует несколько `DocumentView`, то удобнее создать один список шрифтов и использовать его для всех создаваемых виджетов:
 
 ```kotlin
 val commonFontList = FontList {
@@ -399,6 +401,48 @@ documentView {
 ```
 
 <img src="docs/screenshot_5.png" width=351>
+
+### Коррекция шрифтов
+
+При совместном использовании нескольких шрифтов может возникнуть проблема соотношения реальных размеров знаков для одного и того же кегля:
+
+```kotlin
+documentView {
+    fontList {
+        family("serif") from Font(Typeface.SERIF)
+        font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!)
+    }
+
+    document {
+        text = "В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ"
+
+        span to word(4) style { font = "serif" }
+        span from word(5) style { font = "ponomar" }
+    }
+}
+```
+
+<img src="docs/screenshot_9_1.png" width=351>
+
+Можно, конечно, в каждом случае вручную приводить нужный текст к требуемому размеру, а можно скорректировать весь шрифт ещё на этапе его загрузки, задав ему масштаб:
+
+```kotlin
+font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+        scale = 1.2f)
+```
+
+<img src="docs/screenshot_9_2.png" width=351>
+
+Следующей проблемой может оказаться, как в данном случае, слишком большое или слишком маленькое расстояние между строками *(старославянский шрифт требует больше места из-за обилия в языке диакритических знаков)*. Это тоже можно исправить, указав нужные коэффициенты для коррекции верхнего (`ascent`) и нижнего (`descent`) отступов шрифта:
+
+```kotlin
+font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
+        scale = 1.2f, ascentRatio = 0.8f, descentRatio = 0.8f)
+```
+
+<img src="docs/screenshot_9_3.png" width=351>
+
+Это может оказаться удобным, когда приходится работать с нестандартными или недоведёнными до ума шрифтами.
 
 ## Рамки
 
@@ -585,48 +629,6 @@ documentView {
 <img src="docs/screenshot_8.png" width=351>
 
 Заодно в этом примере используется Unicode-символ `'\u2028'`. Это разрыв строки, но без разделения текста на абзацы. Для разделения на абзацы используются `'\r'`, `'\n'`, `'\r\n'` и `'\u2029'`
-
-## Коррекция шрифтов
-
-При совместном использовании нескольких шрифтов может возникнуть проблема соотношения реальных размеров знаков для одного и того же кегля:
-
-```kotlin
-documentView {
-    fontList {
-        family("serif") from Font(Typeface.SERIF)
-        font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!)
-    }
-
-    document {
-        text = "В начале сотворил Бог - Въ нача́лѣ сотворѝ бг҃ъ"
-
-        span to word(4) style { font = "serif" }
-        span from word(5) style { font = "ponomar" }
-    }
-}
-```
-
-<img src="docs/screenshot_9_1.png" width=351>
-
-Можно, конечно, в каждом случае вручную приводить нужный текст к требуемому размеру, а можно скорректировать весь шрифт ещё на этапе его загрузки, задав ему масштаб:
-
-```kotlin
-font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
-        scale = 1.2f)
-```
-
-<img src="docs/screenshot_9_2.png" width=351>
-
-Следующей проблемой может оказаться, как в данном случае, слишком большое или слишком маленькое расстояние между строками *(старославянский шрифт требует больше места из-за обилия в языке диакритических знаков)*. Это тоже можно исправить, указав нужные коэффициенты для коррекции верхнего (`ascent`) и нижнего (`descent`) отступов шрифта:
-
-```kotlin
-font("ponomar") to Font(Typeface.createFromAsset(assets, "fonts/PonomarUnicode.ttf")!!,
-        scale = 1.2f, ascentRatio = 0.8f, descentRatio = 0.8f)
-```
-
-<img src="docs/screenshot_9_3.png" width=351>
-
-Это может оказаться удобным, когда приходится работать с нестандартными или недоведёнными до ума шрифтами.
 
 ## Переносы слов
 
